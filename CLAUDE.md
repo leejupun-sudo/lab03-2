@@ -28,6 +28,8 @@ These cost time if rediscovered — they are properties of this machine, not the
   dev server detached, invoke the CLI through node:
   `Start-Process "C:\Program Files\nodejs\node.exe" -ArgumentList "node_modules\@angular\cli\bin\ng.js","serve"`.
 - **Headless Karma needs `$env:CHROME_BIN`** = `C:\Program Files\Google\Chrome\Application\chrome.exe`.
+- **`gh` is not on PATH** but is installed at `C:\Program Files\GitHub CLI\gh.exe` — invoke it
+  by full path. It is authenticated as `leejupun-sudo` with `repo` + `workflow` scopes.
 - **Two .NET SDKs are installed (9.0.316 and 10.0.302).** `src/global.json` pins 9 so
   `dotnet new sln` yields a classic `.sln` (SDK 10 defaults to `.slnx`) and everything
   targets `net9.0`. Don't remove it.
