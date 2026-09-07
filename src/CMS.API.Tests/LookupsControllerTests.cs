@@ -81,6 +81,42 @@ public class LookupsControllerTests
     }
 
     [Fact]
+    public async Task GetPartners_ReturnsRowsOrderedByDisplayOrderThenName()
+    {
+        using var factory = new LookupApiFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/lookups/partners");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var partners = await response.Content.ReadFromJsonAsync<List<PartnerLookup>>(JsonOptions);
+        Assert.NotNull(partners);
+        Assert.Equal([(short)11, (short)19, (short)31], partners.Select(p => p.Pkid));
+    }
+
+    /// <summary>
+    /// Two of the three seeded partners share a Name, so a bare-Name label would render
+    /// indistinguishable options. The composed label is what makes the dropdown usable.
+    /// </summary>
+    [Fact]
+    public async Task GetPartners_SerializesTheComposedLabelOnTheWire()
+    {
+        using var factory = new LookupApiFactory();
+        using var client = factory.CreateClient();
+
+        var json = await client.GetStringAsync("/api/lookups/partners");
+
+        using var document = JsonDocument.Parse(json);
+        var labels = document.RootElement.EnumerateArray()
+            .Select(element => element.GetProperty("label").GetString())
+            .ToList();
+
+        Assert.Equal(
+            ["CompTIA (CompTIA)", "國際標準課程 (ISO)", "國際標準課程 (PCB)"],
+            labels);
+    }
+
+    [Fact]
     public async Task GetAppUsers_SerializesTheComposedLabelOnTheWire()
     {
         using var factory = new LookupApiFactory();

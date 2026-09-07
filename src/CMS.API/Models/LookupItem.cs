@@ -42,3 +42,22 @@ public class CourseGroupLookup
     /// <summary>顯示標籤 — 即群組名稱, 例: <c>SharePoint系列課程</c>.</summary>
     public string Label => Description;
 }
+
+/// <summary>合作廠商下拉選單項目 — value 為 pkid.</summary>
+public class PartnerLookup
+{
+    public short Pkid { get; set; }
+
+    public string Name { get; set; } = string.Empty;
+
+    public string AppKey { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 顯示標籤, 例: <c>國際標準課程 (ISO)</c>.
+    /// <para>
+    /// 不能只用 Name — 線上有三筆同名的「國際標準課程」, 只顯示名稱會出現無法分辨的重複選項.
+    /// AppKey 是唯一相異的欄位, 作法與 <see cref="AppUserLookup.Label"/> 一致.
+    /// </para>
+    /// </summary>
+    public string Label => $"{Name} ({AppKey})";
+}

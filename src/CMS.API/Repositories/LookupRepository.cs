@@ -49,4 +49,20 @@ public class LookupRepository : ILookupRepository
         return await connection.QueryAsync<CourseGroupLookup>(
             new CommandDefinition(sql, cancellationToken: cancellationToken));
     }
+
+    public async Task<IEnumerable<PartnerLookup>> GetPartnersAsync(CancellationToken cancellationToken = default)
+    {
+        // 66 rows — past the 10-option filter threshold but below the ~100 virtual-scroll one.
+        // Name ASC is the tie-break behind DisplayOrder (23 rows share 9999); pkid closes it,
+        // since Name is not unique either.
+        const string sql = """
+            SELECT p.pkid AS Pkid, p.Name, p.AppKey
+            FROM Partner p
+            ORDER BY p.DisplayOrder ASC, p.Name ASC, p.pkid ASC
+            """;
+
+        using var connection = await _connectionFactory.CreateOpenConnectionAsync(cancellationToken);
+        return await connection.QueryAsync<PartnerLookup>(
+            new CommandDefinition(sql, cancellationToken: cancellationToken));
+    }
 }

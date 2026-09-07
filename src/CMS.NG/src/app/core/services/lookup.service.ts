@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { environment } from '@env';
 import { AppUserLookup } from '@core/models/app-user.model';
 import { CourseGroupLookup } from '@core/models/course-group.model';
+import { PartnerLookup } from '@core/models/partner.model';
 import { PublishStatusLookup } from '@core/models/publish-status.model';
 
 @Injectable({ providedIn: 'root' })
@@ -25,5 +26,14 @@ export class LookupService {
    */
   getCourseGroups(): Observable<CourseGroupLookup[]> {
     return this.http.get<CourseGroupLookup[]>(`${this.baseUrl}/course-groups`);
+  }
+
+  /**
+   * 合作廠商下拉選項. 資料庫約有 66 筆 — 消費端請設定 `[filter]="true"`.
+   * 未達 ~100 筆門檻, 不需要 `[virtualScroll]`.
+   * `label` 已含 AppKey (`國際標準課程 (ISO)`), 因為 Name 並不唯一.
+   */
+  getPartners(): Observable<PartnerLookup[]> {
+    return this.http.get<PartnerLookup[]>(`${this.baseUrl}/partners`);
   }
 }

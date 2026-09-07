@@ -40,4 +40,13 @@ public class LookupsController : ControllerBase
         var groups = await _repository.GetCourseGroupsAsync(cancellationToken);
         return Ok(groups);
     }
+
+    /// <summary>合作廠商清單 (Partner).</summary>
+    [HttpGet("partners")]
+    [ProducesResponseType(typeof(IEnumerable<PartnerLookup>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<PartnerLookup>>> GetPartners(CancellationToken cancellationToken)
+    {
+        var partners = await _repository.GetPartnersAsync(cancellationToken);
+        return Ok(partners);
+    }
 }

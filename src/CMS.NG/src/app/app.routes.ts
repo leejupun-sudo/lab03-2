@@ -59,6 +59,30 @@ export const routes: Routes = [
     title: '發布狀態明細',
   },
   {
+    path: 'partners',
+    loadComponent: () =>
+      import('@features/partners/partner-list/partner-list').then((m) => m.PartnerList),
+    title: '合作廠商 Partner',
+  },
+  {
+    path: 'partners/new',
+    loadComponent: () =>
+      import('@features/partners/partner-form/partner-form').then((m) => m.PartnerForm),
+    title: '新增合作廠商',
+  },
+  {
+    path: 'partners/:id/edit',
+    loadComponent: () =>
+      import('@features/partners/partner-form/partner-form').then((m) => m.PartnerForm),
+    title: '編輯合作廠商',
+  },
+  {
+    path: 'partners/:id',
+    loadComponent: () =>
+      import('@features/partners/partner-detail/partner-detail').then((m) => m.PartnerDetail),
+    title: '合作廠商明細',
+  },
+  {
     path: 'course-groups',
     loadComponent: () =>
       import('@features/course-groups/course-group-list/course-group-list').then(

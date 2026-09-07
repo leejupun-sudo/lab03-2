@@ -18,7 +18,12 @@ public class LookupApiFactory : WebApplicationFactory<Program>
         // Seeded out of alphabetical order so the ORDER BY Description is actually exercised.
         .SeedCourseGroup(7, "SharePoint系列課程")
         .SeedCourseGroup(3, "Azure系列課程")
-        .SeedCourseGroup(5, "PMI®專案管理認證系列");
+        .SeedCourseGroup(5, "PMI®專案管理認證系列")
+        // Seeded out of order, and the last two share DisplayOrder 9999 with the same Name —
+        // exactly the live shape that makes the Name tie-break and the (AppKey) label necessary.
+        .SeedPartner(31, "國際標準課程", "PCB", 9999)
+        .SeedPartner(11, "CompTIA", "CompTIA", 3)
+        .SeedPartner(19, "國際標準課程", "ISO", 9999);
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
