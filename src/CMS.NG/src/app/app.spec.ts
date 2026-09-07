@@ -44,6 +44,19 @@ describe('App', () => {
     expect((link.nativeElement as HTMLAnchorElement).getAttribute('href')).toBe('/app-roles');
   });
 
+  it('renders the 發布狀態 PublishStatus entry in the same 系統管理 Admin group', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('發布狀態 PublishStatus');
+
+    const hrefs = fixture.debugElement
+      .queryAll(By.css('.cms-nav-item'))
+      .map((el) => (el.nativeElement as HTMLAnchorElement).getAttribute('href'));
+    expect(hrefs).toEqual(['/app-roles', '/publish-statuses']);
+  });
+
   it('toggles the sidebar collapsed state', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();

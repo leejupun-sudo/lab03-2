@@ -22,4 +22,13 @@ public class LookupsController : ControllerBase
         var users = await _repository.GetAppUsersAsync(cancellationToken);
         return Ok(users);
     }
+
+    /// <summary>發布狀態清單 (PublishStatus).</summary>
+    [HttpGet("publish-statuses")]
+    [ProducesResponseType(typeof(IEnumerable<PublishStatusLookup>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<PublishStatusLookup>>> GetPublishStatuses(CancellationToken cancellationToken)
+    {
+        var statuses = await _repository.GetPublishStatusesAsync(cancellationToken);
+        return Ok(statuses);
+    }
 }

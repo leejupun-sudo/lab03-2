@@ -1,0 +1,63 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
+using CMS.API.Models;
+using Xunit;
+
+namespace CMS.API.Tests;
+
+public class LookupsControllerTests
+{
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
+    [Fact]
+    public async Task GetPublishStatuses_ReturnsRowsOrderedByPkid()
+    {
+        using var factory = new LookupApiFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/lookups/publish-statuses");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var statuses = await response.Content.ReadFromJsonAsync<List<PublishStatusLookup>>(JsonOptions);
+        Assert.NotNull(statuses);
+        Assert.Equal([(byte)1, (byte)2, (byte)3], statuses.Select(s => s.Pkid));
+        Assert.Equal(["草稿", "上架中", "已下架"], statuses.Select(s => s.Description));
+    }
+
+    /// <summary>
+    /// `Label` is a computed C# property, so a round-trip through the DTO would assert nothing.
+    /// Read the raw JSON to prove the label actually reaches the Angular `optionLabel="label"` binding.
+    /// </summary>
+    [Fact]
+    public async Task GetPublishStatuses_SerializesLabelOnTheWire()
+    {
+        using var factory = new LookupApiFactory();
+        using var client = factory.CreateClient();
+
+        var json = await client.GetStringAsync("/api/lookups/publish-statuses");
+
+        using var document = JsonDocument.Parse(json);
+        var labels = document.RootElement.EnumerateArray()
+            .Select(element => element.GetProperty("label").GetString())
+            .ToList();
+
+        Assert.Equal(["草稿", "上架中", "已下架"], labels);
+    }
+
+    [Fact]
+    public async Task GetAppUsers_SerializesTheComposedLabelOnTheWire()
+    {
+        using var factory = new LookupApiFactory();
+        using var client = factory.CreateClient();
+
+        var json = await client.GetStringAsync("/api/lookups/app-users");
+
+        using var document = JsonDocument.Parse(json);
+        var labels = document.RootElement.EnumerateArray()
+            .Select(element => element.GetProperty("label").GetString())
+            .ToList();
+
+        Assert.Contains("Miles Sun (miles@uuu.com.tw)", labels);
+    }
+}

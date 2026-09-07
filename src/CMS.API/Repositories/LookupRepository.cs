@@ -22,4 +22,17 @@ public class LookupRepository : ILookupRepository
         return await connection.QueryAsync<AppUserLookup>(
             new CommandDefinition(sql, cancellationToken: cancellationToken));
     }
+
+    public async Task<IEnumerable<PublishStatusLookup>> GetPublishStatusesAsync(CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT s.pkid AS Pkid, s.Description
+            FROM PublishStatus s
+            ORDER BY s.pkid ASC
+            """;
+
+        using var connection = await _connectionFactory.CreateOpenConnectionAsync(cancellationToken);
+        return await connection.QueryAsync<PublishStatusLookup>(
+            new CommandDefinition(sql, cancellationToken: cancellationToken));
+    }
 }

@@ -26,5 +26,37 @@ export const routes: Routes = [
       import('@features/app-roles/app-role-detail/app-role-detail').then((m) => m.AppRoleDetail),
     title: '角色明細',
   },
+  {
+    path: 'publish-statuses',
+    loadComponent: () =>
+      import('@features/publish-statuses/publish-status-list/publish-status-list').then(
+        (m) => m.PublishStatusList,
+      ),
+    title: '發布狀態 PublishStatus',
+  },
+  {
+    path: 'publish-statuses/new',
+    loadComponent: () =>
+      import('@features/publish-statuses/publish-status-form/publish-status-form').then(
+        (m) => m.PublishStatusForm,
+      ),
+    title: '新增發布狀態',
+  },
+  {
+    path: 'publish-statuses/:id/edit',
+    loadComponent: () =>
+      import('@features/publish-statuses/publish-status-form/publish-status-form').then(
+        (m) => m.PublishStatusForm,
+      ),
+    title: '編輯發布狀態',
+  },
+  {
+    path: 'publish-statuses/:id',
+    loadComponent: () =>
+      import('@features/publish-statuses/publish-status-detail/publish-status-detail').then(
+        (m) => m.PublishStatusDetail,
+      ),
+    title: '發布狀態明細',
+  },
   { path: '**', redirectTo: 'app-roles' },
 ];

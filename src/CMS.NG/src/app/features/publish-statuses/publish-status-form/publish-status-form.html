@@ -1,0 +1,116 @@
+<form [formGroup]="form" (ngSubmit)="save()">
+  <div class="cms-card cms-page-header">
+    <div class="cms-page-header__titles">
+      <h1 class="cms-page-header__title" data-testid="form-title">{{ title }}</h1>
+    </div>
+
+    <div class="cms-page-header__actions">
+      <p-button
+        type="button"
+        label="取消"
+        icon="pi pi-times"
+        severity="secondary"
+        [text]="true"
+        (onClick)="cancel()"
+      />
+      <p-button
+        type="submit"
+        label="儲存"
+        icon="pi pi-check"
+        [loading]="saving()"
+        data-testid="save-status"
+      />
+    </div>
+  </div>
+
+  <div class="cms-card">
+    <div class="cms-card__body">
+      <h2 class="cms-card__title">狀態資料</h2>
+
+      <div class="cms-field">
+        <label class="cms-field__label" for="pkid">
+          主代碼 <span class="cms-field__required">*</span>
+        </label>
+        <p-inputnumber
+          inputId="pkid"
+          formControlName="pkid"
+          placeholder="請輸入 1–255 的主代碼"
+          [min]="minPkid"
+          [max]="maxPkid"
+          [useGrouping]="false"
+          data-testid="input-pkid"
+        />
+        @if (isEdit) {
+          <small class="cms-field__hint">
+            主代碼為課程與活動關聯的鍵值，建立後不可變更。
+          </small>
+        } @else {
+          <small class="cms-field__hint">
+            主代碼非自動編號，請自行指定 1–255 之間尚未使用的值。
+          </small>
+        }
+        @if (isInvalid('pkid')) {
+          <small class="cms-field__error" data-testid="error-pkid">
+            主代碼為必填，且必須介於 1 到 255。
+          </small>
+        }
+      </div>
+
+      <div class="cms-field">
+        <label class="cms-field__label" for="description">
+          狀態名稱 <span class="cms-field__required">*</span>
+        </label>
+        <input
+          pInputText
+          id="description"
+          formControlName="description"
+          placeholder="例：上架中"
+          data-testid="input-description"
+        />
+        @if (isInvalid('description')) {
+          <small class="cms-field__error" data-testid="error-description">
+            狀態名稱為必填，且長度不可超過 50 字。
+          </small>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="cms-card">
+    <div class="cms-card__body">
+      <h2 class="cms-card__title">狀態旗標</h2>
+
+      <div class="cms-flag-group">
+        <div class="cms-flag">
+          <p-checkbox
+            inputId="isDraft"
+            formControlName="isDraft"
+            [binary]="true"
+            data-testid="input-is-draft"
+          />
+          <label for="isDraft">草稿</label>
+        </div>
+
+        <div class="cms-flag">
+          <p-checkbox
+            inputId="isPublished"
+            formControlName="isPublished"
+            [binary]="true"
+            data-testid="input-is-published"
+          />
+          <label for="isPublished">已上架</label>
+        </div>
+
+        <div class="cms-flag">
+          <p-checkbox
+            inputId="isDiscontinued"
+            formControlName="isDiscontinued"
+            [binary]="true"
+            data-testid="input-is-discontinued"
+          />
+          <label for="isDiscontinued">已下架</label>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>

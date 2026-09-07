@@ -1,0 +1,19 @@
+.cms-field__hint {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--cms-muted);
+}
+
+/* The three flags read as one block rather than three stacked form rows. */
+.cms-flag-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.cms-flag {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}

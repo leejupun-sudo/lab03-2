@@ -20,3 +20,14 @@ public class AppUserLookup
     /// <summary>顯示標籤, 例: <c>Miles Sun (miles@uuu.com.tw)</c>.</summary>
     public string Label => $"{UserName} ({UserId})";
 }
+
+/// <summary>發布狀態下拉選單項目 — value 為 pkid.</summary>
+public class PublishStatusLookup
+{
+    public byte Pkid { get; set; }
+
+    public string Description { get; set; } = string.Empty;
+
+    /// <summary>顯示標籤 — 即狀態名稱, 例: <c>上架中</c>.</summary>
+    public string Label => Description;
+}
