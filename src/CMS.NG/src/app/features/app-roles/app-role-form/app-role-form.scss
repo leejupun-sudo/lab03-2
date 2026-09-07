@@ -1,0 +1,18 @@
+.cms-field__hint {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--cms-muted);
+}
+
+.cms-field textarea {
+  width: 100%;
+}
+
+/* Wrap the selected-user chips instead of overflowing the control. */
+:host ::ng-deep .p-multiselect-label {
+  white-space: normal;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}

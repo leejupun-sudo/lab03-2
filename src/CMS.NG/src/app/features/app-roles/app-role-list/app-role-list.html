@@ -1,0 +1,151 @@
+<div class="cms-card cms-page-header">
+  <div class="cms-page-header__titles">
+    <h1 class="cms-page-header__title">角色 AppRole</h1>
+    <span class="cms-page-header__subtitle">使用者角色</span>
+  </div>
+
+  <div class="cms-page-header__actions">
+    <p-button
+      label="搜尋條件"
+      icon="pi pi-filter"
+      severity="secondary"
+      [text]="true"
+      [badge]="hasActiveFilters ? '!' : undefined"
+      data-testid="open-filters"
+      (onClick)="drawerVisible.set(true)"
+    />
+    <p-button label="新增" icon="pi pi-plus" data-testid="add-role" (onClick)="goToNew()" />
+  </div>
+</div>
+
+<div class="cms-card">
+  <p-table
+    [value]="roles()"
+    [loading]="loading()"
+    [paginator]="true"
+    [rows]="pageState.rows"
+    [first]="pageState.first"
+    [rowsPerPageOptions]="rowsPerPageOptions"
+    [sortField]="sortState.sortField"
+    [sortOrder]="sortState.sortOrder"
+    [showCurrentPageReport]="true"
+    currentPageReportTemplate="{first}–{last} 筆，共 {totalRecords} 筆"
+    paginatorPosition="top"
+    dataKey="pkid"
+    styleClass="p-datatable-sm"
+    data-testid="role-table"
+    (onSort)="onSort($event)"
+    (onPage)="onPage($event)"
+  >
+    <ng-template #header>
+      <tr>
+        <th pSortableColumn="pkid" style="width: 6rem">主代碼 <p-sortIcon field="pkid" /></th>
+        <th pSortableColumn="roleId">角色代碼 <p-sortIcon field="roleId" /></th>
+        <th pSortableColumn="roleName">角色名稱 <p-sortIcon field="roleName" /></th>
+        <th pSortableColumn="permissionLevel" style="width: 9rem" class="cms-cell--number">
+          權限等級 <p-sortIcon field="permissionLevel" />
+        </th>
+        <th pSortableColumn="description">描述 <p-sortIcon field="description" /></th>
+        <th pSortableColumn="userCount" style="width: 8rem" class="cms-cell--number">
+          使用者數 <p-sortIcon field="userCount" />
+        </th>
+        <th style="width: 10rem" class="cms-cell--actions">操作</th>
+      </tr>
+    </ng-template>
+
+    <ng-template #body let-role>
+      <tr data-testid="role-row">
+        <td>{{ role.pkid }}</td>
+        <td>{{ role.roleId }}</td>
+        <td>{{ role.roleName }}</td>
+        <td class="cms-cell--number">{{ role.permissionLevel }}</td>
+        <td>{{ role.description }}</td>
+        <td class="cms-cell--number">{{ role.userCount }}</td>
+        <td class="cms-cell--actions">
+          <p-button
+            icon="pi pi-eye"
+            severity="secondary"
+            [text]="true"
+            [rounded]="true"
+            pTooltip="檢視"
+            [routerLink]="['/app-roles', role.pkid]"
+          />
+          <p-button
+            icon="pi pi-pencil"
+            severity="info"
+            [text]="true"
+            [rounded]="true"
+            pTooltip="編輯"
+            [routerLink]="['/app-roles', role.pkid, 'edit']"
+          />
+          <p-button
+            icon="pi pi-trash"
+            severity="danger"
+            [text]="true"
+            [rounded]="true"
+            pTooltip="刪除"
+            data-testid="delete-role"
+            (onClick)="confirmDelete(role)"
+          />
+        </td>
+      </tr>
+    </ng-template>
+
+    <ng-template #emptymessage>
+      <tr>
+        <td colspan="7" class="cms-empty">查無符合條件的角色。</td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>
+
+<p-drawer
+  header="搜尋條件"
+  position="right"
+  [visible]="drawerVisible()"
+  (visibleChange)="drawerVisible.set($event)"
+  [style]="{ width: '24rem' }"
+>
+  <div class="cms-field">
+    <label class="cms-field__label" for="filter-keyword">關鍵字</label>
+    <input
+      pInputText
+      id="filter-keyword"
+      name="keyword"
+      placeholder="角色代碼／角色名稱／描述"
+      data-testid="filter-keyword"
+      [(ngModel)]="filters.keyword"
+    />
+  </div>
+
+  <div class="cms-field">
+    <label class="cms-field__label" for="filter-level-from">權限等級（起）</label>
+    <p-inputnumber
+      inputId="filter-level-from"
+      [min]="0"
+      [useGrouping]="false"
+      [(ngModel)]="filters.permissionLevelFrom"
+    />
+  </div>
+
+  <div class="cms-field">
+    <label class="cms-field__label" for="filter-level-to">權限等級（迄）</label>
+    <p-inputnumber
+      inputId="filter-level-to"
+      [min]="0"
+      [useGrouping]="false"
+      [(ngModel)]="filters.permissionLevelTo"
+    />
+  </div>
+
+  <div class="cms-drawer-actions">
+    <p-button
+      label="清除"
+      icon="pi pi-times"
+      severity="secondary"
+      [outlined]="true"
+      (onClick)="clearFilters()"
+    />
+    <p-button label="搜尋" icon="pi pi-search" data-testid="apply-filters" (onClick)="applyFilters()" />
+  </div>
+</p-drawer>

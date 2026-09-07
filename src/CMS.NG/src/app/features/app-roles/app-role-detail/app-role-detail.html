@@ -1,0 +1,78 @@
+<div class="cms-card cms-page-header">
+  <div class="cms-page-header__titles">
+    <h1 class="cms-page-header__title">角色明細</h1>
+    @if (role(); as item) {
+      <span class="cms-page-header__subtitle">{{ item.roleId }}</span>
+    }
+  </div>
+
+  <div class="cms-page-header__actions">
+    <p-button
+      label="返回"
+      icon="pi pi-arrow-left"
+      severity="secondary"
+      [text]="true"
+      (onClick)="goBack()"
+    />
+    @if (role(); as item) {
+      <p-button label="編輯" icon="pi pi-pencil" [routerLink]="['/app-roles', item.pkid, 'edit']" />
+    }
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="cms-card">
+    <div class="cms-card__body cms-empty">載入中…</div>
+  </div>
+} @else if (role(); as item) {
+  <div class="cms-card">
+    <div class="cms-card__body">
+      <h2 class="cms-card__title">角色資料</h2>
+
+      <dl class="cms-detail-grid">
+        <dt class="cms-detail-grid__label">主代碼</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-pkid">{{ item.pkid }}</dd>
+
+        <dt class="cms-detail-grid__label">角色代碼</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-role-id">{{ item.roleId }}</dd>
+
+        <dt class="cms-detail-grid__label">角色名稱</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-role-name">{{ item.roleName }}</dd>
+
+        <dt class="cms-detail-grid__label">權限等級</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-permission-level">
+          {{ item.permissionLevel }}
+        </dd>
+
+        <dt class="cms-detail-grid__label">描述</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-description">
+          @if (item.description) {
+            {{ item.description }}
+          } @else {
+            <span class="cms-empty">—</span>
+          }
+        </dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="cms-card">
+    <div class="cms-card__body">
+      <h2 class="cms-card__title">使用者（{{ item.userCount }}）</h2>
+
+      @if (assignedUserLabels.length) {
+        <div class="cms-tags" data-testid="detail-users">
+          @for (label of assignedUserLabels; track label) {
+            <p-tag [value]="label" severity="secondary" />
+          }
+        </div>
+      } @else {
+        <p class="cms-empty" data-testid="detail-users-empty">此角色尚未指派使用者。</p>
+      }
+    </div>
+  </div>
+} @else {
+  <div class="cms-card">
+    <div class="cms-card__body cms-empty" data-testid="detail-not-found">查無此角色。</div>
+  </div>
+}

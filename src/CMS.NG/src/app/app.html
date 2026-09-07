@@ -1,0 +1,55 @@
+<div class="cms-shell" [class.cms-shell--collapsed]="sidebarCollapsed()">
+  <aside class="cms-sidebar">
+    <div class="cms-sidebar__brand">
+      <span class="cms-sidebar__brand-text">{{ title() }}</span>
+      <button
+        type="button"
+        class="cms-sidebar__toggle"
+        [attr.aria-label]="sidebarCollapsed() ? '展開選單' : '收合選單'"
+        (click)="toggleSidebar()"
+      >
+        <i class="pi" [class.pi-angle-left]="!sidebarCollapsed()" [class.pi-angle-right]="sidebarCollapsed()"></i>
+      </button>
+    </div>
+
+    <nav class="cms-sidebar__nav">
+      @for (group of navGroups(); track group.label) {
+        <div class="cms-nav-group">
+          <button type="button" class="cms-nav-group__header" (click)="toggleGroup(group)">
+            <i class="cms-nav-group__icon" [class]="group.icon"></i>
+            <span class="cms-nav-group__label">{{ group.label }}</span>
+            <i
+              class="cms-nav-group__chevron pi"
+              [class.pi-angle-down]="group.expanded"
+              [class.pi-angle-right]="!group.expanded"
+            ></i>
+          </button>
+
+          @if (group.expanded) {
+            <ul class="cms-nav-group__items">
+              @for (item of group.items; track item.route) {
+                <li>
+                  <a
+                    class="cms-nav-item"
+                    [routerLink]="item.route"
+                    routerLinkActive="cms-nav-item--active"
+                  >
+                    <i class="cms-nav-item__icon" [class]="item.icon"></i>
+                    <span class="cms-nav-item__label">{{ item.label }}</span>
+                  </a>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      }
+    </nav>
+  </aside>
+
+  <main class="cms-content">
+    <router-outlet />
+  </main>
+</div>
+
+<p-toast position="top-right" />
+<p-confirmdialog [style]="{ width: '32rem' }" />

@@ -1,0 +1,32 @@
+# ---------- .NET ----------
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+*.userprefs
+.vs/
+TestResults/
+*.trx
+*.coverage
+*.coverlet.json
+
+# ---------- Node / Angular ----------
+node_modules/
+dist/
+.angular/
+coverage/
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ---------- Editors ----------
+.idea/
+*.swp
+
+# ---------- OS ----------
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
