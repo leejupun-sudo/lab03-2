@@ -1,0 +1,13 @@
+.cms-field__hint {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--cms-muted);
+}
+
+/* pkid is IDENTITY — shown read-only in edit mode, never an input. */
+.cms-field__readonly {
+  padding: 0.5rem 0;
+  font-weight: 600;
+  color: var(--cms-heading);
+}

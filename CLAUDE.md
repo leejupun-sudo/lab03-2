@@ -12,6 +12,7 @@ is the source of truth for how a table becomes code. Read both before adding a f
 | ------------------- | --------------------------------------------------------------- |
 | `database/*.sql`    | Table DDL — `auth.sql`, `admin.sql`, `course.sql`, `promotion.sql` |
 | `spec/`             | Codegen convention, feature-spec template, two worked spec samples, UI mockups |
+| `spec/{sub-system}/`| Real per-table build specs — `admin/PublishStatus.md`, `course/CourseGroup.md` |
 | `src/CMS.API`       | .NET 9 Web API, Dapper (no EF), port 5000                        |
 | `src/CMS.API.Tests` | xUnit endpoint tests                                             |
 | `src/CMS.NG`        | Angular 20 standalone + PrimeNG 20, port 4200                     |
@@ -28,6 +29,8 @@ These cost time if rediscovered — they are properties of this machine, not the
   dev server detached, invoke the CLI through node:
   `Start-Process "C:\Program Files\nodejs\node.exe" -ArgumentList "node_modules\@angular\cli\bin\ng.js","serve"`.
 - **Headless Karma needs `$env:CHROME_BIN`** = `C:\Program Files\Google\Chrome\Application\chrome.exe`.
+- **`gh` is not on PATH** but is installed at `C:\Program Files\GitHub CLI\gh.exe` — invoke it
+  by full path. It is authenticated as `leejupun-sudo` with `repo` + `workflow` scopes.
 - **Two .NET SDKs are installed (9.0.316 and 10.0.302).** `src/global.json` pins 9 so
   `dotnet new sln` yields a classic `.sln` (SDK 10 defaults to `.slnx`) and everything
   targets `net9.0`. Don't remove it.
@@ -35,6 +38,12 @@ These cost time if rediscovered — they are properties of this machine, not the
   `cat <<'EOF'` collapsed `\\SQLEXPRESS` to `\SQLEXPRESS` and produced invalid JSON.
   Use the Write tool for JSON/SQL content containing escapes.
 - Chinese output from `dotnet` is expected — the CLI is localised zh-TW.
+- **`python` on PATH is the WindowsApps stub** — it exits silently doing nothing, so a
+  heredoc script "succeeds" without running. Use the Edit tool or PowerShell instead.
+- **`sqlcmd` mangles Chinese on the terminal** (and `-u`/`-o` trip over `-E`). For probes
+  that need readable `nvarchar` values, use `System.Data.SqlClient` from PowerShell:
+  `New-Object System.Data.SqlClient.SqlConnection("Server=.\SQLEXPRESS;Database=CMS;Integrated Security=true;TrustServerCertificate=true")`.
+  Numeric probes are fine through `sqlcmd -S .\SQLEXPRESS -d CMS -E -C -h -1 -W`.
 
 ## Commands
 
@@ -68,14 +77,71 @@ writes with an in-memory repository instead.
 - Alias FK columns in SELECT (`c.Partner_pkid AS PartnerPkid`) so Dapper maps them.
 - Duplicate natural keys return `409` with a `ProblemDetails` body, not `500`.
 
+### Four things the schema will not tell you — check the live DB first
+
+Read-only probes against `.\SQLEXPRESS` are cheap and have caught a real bug in every
+feature so far. Run them before writing the repository, not after.
+
+- **A table that is an FK target needs a delete guard.** No table here declares
+  `ON DELETE`, so deleting a referenced row raises an FK violation — a `500`, which the
+  rule above forbids. Carry usage-count subqueries in every SELECT and gate `DELETE`
+  behind an `IsInUseAsync`, returning `409`. `PublishStatus`, `CourseGroup` and `Partner`
+  all do this; copy any of them (`Partner` is the five-count example).
+- **Do not assume a "name" column is unique.** `CourseGroup.Description` has no `UNIQUE`
+  constraint and the live table holds duplicates (215 rows, 213 distinct). Adding the
+  usual duplicate check there would contradict the schema *and* make the existing twin
+  rows uneditable — each would 409 against its own duplicate. Verify with
+  `SELECT COUNT(DISTINCT col), COUNT(*)` before writing a `*ExistsAsync`.
+- **Not every `pkid` is `IDENTITY`.** `PublishStatus.pkid` is a plain `tinyint`: the
+  client supplies it on create, `INSERT` writes it explicitly, there is no
+  `SCOPE_IDENTITY()`, and a duplicate is a `409`. Where the PK *is* IDENTITY, cast
+  `SCOPE_IDENTITY()` to the column's own type (`smallint` for `CourseGroup`, not `int`).
+
+- **A reference can exist with no `FOREIGN KEY` behind it.** `Seminar.Partner_pkid` points
+  at `Partner.pkid` across 364 live rows, but `sys.foreign_keys` returns **0** constraints
+  for `Seminar` — the DDL declares none. A guard built from the `.sql` files alone misses
+  it, and deleting a partner referenced only by `Seminar` succeeds, orphaning the rows
+  silently. That is not hypothetical: `Partner` 122 is exactly such a row. Enumerate
+  references with `sys.foreign_keys`, then also grep the DDL for `{Table}_pkid` columns the
+  constraint list does not cover.
+
+An FK-target PK is also **immutable** — never write it in `UPDATE`, and disable the
+control in the edit form. Same hazard as `AppRole.RoleId`.
+
+The distinct-vs-total probe cuts both ways: on `Partner` it rules a duplicate check *out*
+for `Name` (66 rows / 64 distinct) and *in* for `AppKey` (66/66), in the same table.
+
+### Junction table, or entity in its own right?
+
+"Two FK columns and a name containing the parent table" is not enough to call something
+an N-N junction. `PartnerCourseGroup` matches that pattern but has its own
+`pkid IDENTITY`, its own payload (`DisplayOrder`, `Description`), and — decisively —
+`Promotion2` holds an FK to *its* pkid. Delete-then-reinsert would hand every row a new
+pkid and orphan 387 live `Promotion2` rows. Before treating a table as a junction, check
+that nothing FKs to it and that it has no surrogate key of its own; a true junction here
+(`AppUserRole`, `CourseInCertification`) keys on the FK pair.
+
 ### Testing the API
 
 `CMS.API.Tests` hosts the real pipeline with `WebApplicationFactory<Program>` and swaps
-only the repository for `FakeAppRoleRepository`. This exercises routing, model binding,
-DataAnnotations validation and JSON casing without a database. `Program.cs` ends with
-`public partial class Program;` to make that possible — keep it.
+only the repository under test for an in-memory fake. This exercises routing, model
+binding, DataAnnotations validation and JSON casing without a database. `Program.cs` ends
+with `public partial class Program;` to make that possible — keep it.
 
-Construct a fresh `AppRoleApiFactory` per test; the fake holds mutable state.
+One factory + one fake per feature (`AppRoleApiFactory`, `PublishStatusApiFactory`,
+`CourseGroupApiFactory`, `PartnerApiFactory`, plus `LookupApiFactory` for
+`LookupsController`). **Construct a
+fresh factory per test** — the fakes hold mutable state. Seed the fake with data that
+actually exercises the rules: a referenced row so the delete guard has something to block,
+and duplicate names where duplicates are legal.
+
+A fake must mirror the SQL, including its ordering — otherwise the test passes while the
+endpoint returns rows in the wrong order.
+
+**Computed C# properties need a raw-JSON assertion.** `LookupItem`'s `Label` is a
+`get`-only expression, so `ReadFromJsonAsync` recomputes it client-side and an equality
+check proves nothing. Parse with `JsonDocument` and read `.GetProperty("label")` to prove
+the value actually reaches the Angular `optionLabel="label"` binding.
 
 ## Frontend conventions
 
@@ -121,12 +187,98 @@ Two schema decisions that are easy to get wrong:
 `null` when blank, even though the mockup draws a required asterisk. The UI PNGs in
 `spec/` are style references; the schema wins on content.
 
+## Feature: 發布狀態 PublishStatus (implemented)
+
+Sidebar **系統管理 Admin → 發布狀態 PublishStatus**; routes under `/publish-statuses`.
+Spec: `spec/admin/PublishStatus.md`.
+
+- **`pkid` is `tinyint` with no `IDENTITY`** — the client picks it. `INSERT` writes it,
+  there is no `SCOPE_IDENTITY()`, and a duplicate is `409`. `0` is reserved as the
+  "not supplied" sentinel via `[Range(1, 255)]`; SQL would accept it, this is a
+  deliberate narrowing.
+- `Course` and `Promotion2` both FK to it, so `pkid` is immutable and `DELETE` is guarded.
+  Every live row is referenced — the guard is not theoretical.
+- The three `bit` flags (`IsDraft`/`IsPublished`/`IsDiscontinued`) are **independent**.
+  They happen to be mutually exclusive in the data, but no `CHECK` enforces it, so there
+  is no cross-field validator. Tri-state filters use `p-select`, not `p-checkbox` — a
+  checkbox cannot express "no filter".
+
+## Feature: 課程群組 CourseGroup (implemented)
+
+Sidebar **課程管理 Course → 課程群組 CourseGroup**; routes under `/course-groups`.
+Spec: `spec/course/CourseGroup.md`.
+
+- Two columns only: `pkid smallint IDENTITY` and `Description nvarchar(100) NOT NULL`.
+- **No duplicate check on `Description`** — see the backend-conventions note above.
+  The only `409` in this feature is the delete guard.
+- `PartnerCourseGroup` is **not** an N-N junction — see the junction note above.
+- Default sort is `Description ASC`: there is no `DisplayOrder` column and pkid order is
+  meaningless across 215 reference rows. This contradicts `spec/sample1.spec.md`, which
+  suggests `pkid ASC` for the dropdown; reconcile when the Course feature is built.
+- 215 lookup options is past the ~100 threshold, so consumers need `[filter]` and
+  `[virtualScroll]`.
+
+## Feature: 合作廠商 Partner (implemented)
+
+Sidebar **課程管理 Course → 合作廠商 Partner** (above CourseGroup); routes under `/partners`.
+Spec: `spec/course/Partner.md`.
+
+- `pkid smallint IDENTITY`, immutable — the most-referenced FK target in the schema.
+- **`Seminar` references it with no FK constraint.** `SeminarCount` is carried in every
+  SELECT and blocks `DELETE` alongside the four enforced references (Course, Certification,
+  PartnerCourseGroup, Promotion2). See the schema-traps note above; dropping it as
+  "redundant" reintroduces the bug.
+- **`Name` gets no duplicate check; `AppKey` does.** 66 rows / 64 distinct names
+  (「國際標準課程」 ×3) versus 66/66 distinct AppKeys. The AppKey 409 is an *application*
+  rule — no `UNIQUE` index backs it — so re-run the distinct probe before relying on it.
+- Default sort is `DisplayOrder ASC, Name ASC, pkid ASC`. All three keys are needed: 23 rows
+  share the `9999` "park at the end" sentinel and `Name` is not unique either, so without
+  `pkid` the order is undefined and paging is unstable.
+- **`ImageFilename` has no format guarantee** — 17 of the 62 non-null values carry no
+  extension at all (`Splunk`, `恆逸`, `轉職培訓`). No regex, no `<img src>`; it renders as
+  text and stores `null` when blank.
+- `PartnerLookup.Label` is `Name (AppKey)`, not bare `Name` — three rows share a name and
+  would otherwise render as indistinguishable dropdown options. This deviates from
+  `spec/sample1.spec.md`; reconcile when the Course feature is built. 66 options needs
+  `[filter]` but **not** `[virtualScroll]`.
+- The list page shows one summed **使用中** column; the detail page breaks the five counts
+  out separately. Link buttons are deferred — `/courses`, `/certifications`,
+  `/partner-course-groups`, `/promotion2s` and `/seminars` are all dead routes.
+
+## Gaps between the `/crud` skill and this codebase
+
+The skill's step list is not fully implementable here yet. Do not silently skip these —
+say so in the report.
+
+- **RowAudit does not exist.** The skill asks for a `RowAuditWriter` injected into every
+  repository and a `RowAuditBadgeComponent` in the detail/form toolbars. `admin.sql` has
+  a `RowAudit` *table*, but there is no C# writer and no Angular component, and no
+  implemented feature uses either. Building that infrastructure is separate work; until
+  then, follow the AppRole shape and note the omission.
+- **Primary-Foreign link buttons** need the child feature to exist first. `PublishStatus`,
+  `CourseGroup` and `Partner` all ship usage *counts* as plain numbers because `/courses`,
+  `/certifications`, `/promotion2s`, `/partner-course-groups` and `/seminars` are dead
+  routes. The specs record the routes and query-param names as the contract to build
+  against.
+- **The junction heuristic can be wrong** — see above.
+
 ## Adding a feature
 
-1. Fill in `spec/feature-spec.template.md` for the table; `spec/sample1.spec.md`
-   (Course, FK+N-N heavy) and `spec/sample2.spec.md` (SkillTrain, simpler) show the depth expected.
-2. Backend: models, `I{Table}Repository` + implementation, controller, then **register
+1. Read the DDL, then **probe the live DB** for row counts, distinct-vs-total on any
+   candidate natural key, and which tables actually reference this one. See
+   *Three things the schema will not tell you*.
+2. Write `spec/{sub-system}/{Table}.md` from `spec/feature-spec.template.md`.
+   `spec/sample1.spec.md` (Course, FK+N-N heavy) and `spec/sample2.spec.md` (SkillTrain,
+   simpler) show the depth expected; `spec/admin/PublishStatus.md` and
+   `spec/course/CourseGroup.md` are real worked examples. Record every judgment call and
+   its reason — that is what the spec is for.
+3. Backend: models, `I{Table}Repository` + implementation, controller, then **register
    the repository in `Program.cs`** — a missing registration only fails at request time.
-3. Frontend: service in `core/services/`, three components under `features/`, a lazy
-   route, and a nav entry in the `navGroups` signal in `app.ts`.
-4. Add tests on both sides; the AppRole specs are the reference shape.
+   Add a `GET /api/lookups/{plural}` if anything FKs to this table.
+4. Frontend: model + service in `core/`, three components under `features/`, four lazy
+   routes (`/new` before `/:id`), and a nav entry in the `navGroups` signal in `app.ts`.
+5. Add tests on both sides. Adding a nav entry breaks `app.spec.ts` if it asserts an
+   exact href list — update it in the same commit.
+6. Verify: `dotnet build`, `dotnet test`, `ng build`, `ng test`, then read-only probes of
+   the new endpoints against the live DB. **Kill the `dotnet run` process afterwards** —
+   a surviving `CMS.API.exe` locks the output file and the next build fails with MSB3027.

@@ -1,0 +1,16 @@
+.cms-cell--number {
+  text-align: right;
+}
+
+.cms-cell--flag {
+  text-align: center;
+}
+
+.cms-cell--actions {
+  text-align: center;
+  white-space: nowrap;
+}
+
+:host ::ng-deep .p-datatable-header-cell {
+  white-space: nowrap;
+}

@@ -44,6 +44,67 @@ describe('App', () => {
     expect((link.nativeElement as HTMLAnchorElement).getAttribute('href')).toBe('/app-roles');
   });
 
+  it('renders the 發布狀態 PublishStatus entry in the same 系統管理 Admin group', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('發布狀態 PublishStatus');
+
+    const hrefs = fixture.debugElement
+      .queryAll(By.css('.cms-nav-item'))
+      .map((el) => (el.nativeElement as HTMLAnchorElement).getAttribute('href'));
+    expect(hrefs).toEqual(['/app-roles', '/publish-statuses', '/partners', '/course-groups']);
+  });
+
+  it('renders the 課程管理 Course group with the 課程群組 CourseGroup entry', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('課程管理 Course');
+    expect(text).toContain('課程群組 CourseGroup');
+  });
+
+  it('renders 課程管理 Course as a second group, after 系統管理 Admin', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+
+    const groupLabels = fixture.debugElement
+      .queryAll(By.css('.cms-nav-group__label'))
+      .map((el) => ((el.nativeElement as HTMLElement).textContent ?? '').trim());
+    expect(groupLabels).toEqual(['系統管理 Admin', '課程管理 Course']);
+  });
+
+  it('links the 課程群組 CourseGroup entry to /course-groups', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+
+    const links = fixture.debugElement.queryAll(By.css('.cms-nav-item'));
+    const href = (links[links.length - 1].nativeElement as HTMLAnchorElement).getAttribute('href');
+    expect(href).toBe('/course-groups');
+  });
+
+  it('renders the 合作廠商 Partner entry in the 課程管理 Course group', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('合作廠商 Partner');
+  });
+
+  it('links the 合作廠商 Partner entry to /partners, ahead of 課程群組 CourseGroup', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+
+    const hrefs = fixture.debugElement
+      .queryAll(By.css('.cms-nav-item'))
+      .map((el) => (el.nativeElement as HTMLAnchorElement).getAttribute('href'));
+
+    expect(hrefs.indexOf('/partners')).toBeGreaterThan(-1);
+    expect(hrefs.indexOf('/partners')).toBeLessThan(hrefs.indexOf('/course-groups'));
+  });
+
   it('toggles the sidebar collapsed state', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();

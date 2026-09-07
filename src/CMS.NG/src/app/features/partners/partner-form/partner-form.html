@@ -1,0 +1,151 @@
+<form [formGroup]="form" (ngSubmit)="save()">
+  <div class="cms-card cms-page-header">
+    <div class="cms-page-header__titles">
+      <h1 class="cms-page-header__title" data-testid="form-title">{{ title }}</h1>
+    </div>
+
+    <div class="cms-page-header__actions">
+      <p-button
+        type="button"
+        label="取消"
+        icon="pi pi-times"
+        severity="secondary"
+        [text]="true"
+        (onClick)="cancel()"
+      />
+      <p-button
+        type="submit"
+        label="儲存"
+        icon="pi pi-check"
+        [loading]="saving()"
+        data-testid="save-partner"
+      />
+    </div>
+  </div>
+
+  <div class="cms-card">
+    <div class="cms-card__body">
+      <h2 class="cms-card__title">廠商資料</h2>
+
+      @if (isEdit) {
+        <div class="cms-field">
+          <span class="cms-field__label">主代碼</span>
+          <div class="cms-field__readonly" data-testid="form-pkid">{{ pkid() }}</div>
+          <small class="cms-field__hint">
+            主代碼由系統自動編號，且為課程、認證、促銷活動等關聯的鍵值，不可變更。
+          </small>
+        </div>
+      }
+
+      <div class="cms-field">
+        <label class="cms-field__label" for="name">
+          廠商名稱 <span class="cms-field__required">*</span>
+        </label>
+        <input
+          pInputText
+          id="name"
+          formControlName="name"
+          placeholder="例：CompTIA"
+          data-testid="input-name"
+        />
+        @if (isInvalid('name')) {
+          <small class="cms-field__error" data-testid="error-name">
+            廠商名稱為必填，且長度不可超過 50 字。
+          </small>
+        }
+      </div>
+
+      <div class="cms-field">
+        <label class="cms-field__label" for="appKey">
+          應用代碼 <span class="cms-field__required">*</span>
+        </label>
+        <input
+          pInputText
+          id="appKey"
+          formControlName="appKey"
+          placeholder="例：CompTIA"
+          data-testid="input-app-key"
+        />
+        <small class="cms-field__hint">應用程式使用的短代碼，需唯一，長度上限 10 字元。</small>
+        @if (isInvalid('appKey')) {
+          <small class="cms-field__error" data-testid="error-app-key">
+            應用代碼為必填，且長度不可超過 10 字元。
+          </small>
+        }
+      </div>
+
+      <div class="cms-field">
+        <label class="cms-field__label" for="nameOnPartnerMenu">
+          廠商選單顯示名稱 <span class="cms-field__required">*</span>
+        </label>
+        <input
+          pInputText
+          id="nameOnPartnerMenu"
+          formControlName="nameOnPartnerMenu"
+          placeholder="例：溫室氣體：ISO 14060系列課程"
+          data-testid="input-name-on-partner-menu"
+        />
+        @if (isInvalid('nameOnPartnerMenu')) {
+          <small class="cms-field__error" data-testid="error-name-on-partner-menu">
+            廠商選單顯示名稱為必填，且長度不可超過 200 字。
+          </small>
+        }
+      </div>
+
+      <div class="cms-field">
+        <label class="cms-field__label" for="nameOnCourseDetailPage">
+          課程明細頁顯示名稱 <span class="cms-field__required">*</span>
+        </label>
+        <input
+          pInputText
+          id="nameOnCourseDetailPage"
+          formControlName="nameOnCourseDetailPage"
+          placeholder="例：ISO"
+          data-testid="input-name-on-course-detail-page"
+        />
+        @if (isInvalid('nameOnCourseDetailPage')) {
+          <small class="cms-field__error" data-testid="error-name-on-course-detail-page">
+            課程明細頁顯示名稱為必填，且長度不可超過 50 字。
+          </small>
+        }
+      </div>
+
+      <div class="cms-field">
+        <label class="cms-field__label" for="displayOrder">
+          顯示順序 <span class="cms-field__required">*</span>
+        </label>
+        <p-inputnumber
+          inputId="displayOrder"
+          formControlName="displayOrder"
+          [min]="minDisplayOrder"
+          [max]="maxDisplayOrder"
+          [useGrouping]="false"
+          data-testid="input-display-order"
+        />
+        <small class="cms-field__hint">數字小的排在前面；9999 表示排在最後。</small>
+        @if (isInvalid('displayOrder')) {
+          <small class="cms-field__error" data-testid="error-display-order">
+            顯示順序為必填，且必須介於 0 到 9999。
+          </small>
+        }
+      </div>
+
+      <div class="cms-field">
+        <label class="cms-field__label" for="imageFilename">圖檔名稱</label>
+        <input
+          pInputText
+          id="imageFilename"
+          formControlName="imageFilename"
+          placeholder="例：CompTIA.png"
+          data-testid="input-image-filename"
+        />
+        <small class="cms-field__hint">選填，長度上限 50 字元；留空表示未設定。</small>
+        @if (isInvalid('imageFilename')) {
+          <small class="cms-field__error" data-testid="error-image-filename">
+            圖檔名稱長度不可超過 50 字元。
+          </small>
+        }
+      </div>
+    </div>
+  </div>
+</form>

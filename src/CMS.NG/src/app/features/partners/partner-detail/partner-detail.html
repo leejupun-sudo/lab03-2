@@ -1,0 +1,125 @@
+<div class="cms-card cms-page-header">
+  <div class="cms-page-header__titles">
+    <h1 class="cms-page-header__title">合作廠商明細</h1>
+    @if (partner(); as item) {
+      <span class="cms-page-header__subtitle">{{ item.name }}</span>
+    }
+  </div>
+
+  <div class="cms-page-header__actions">
+    <p-button
+      label="返回"
+      icon="pi pi-arrow-left"
+      severity="secondary"
+      [text]="true"
+      (onClick)="goBack()"
+    />
+    @if (partner(); as item) {
+      <p-button label="編輯" icon="pi pi-pencil" [routerLink]="['/partners', item.pkid, 'edit']" />
+    }
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="cms-card">
+    <div class="cms-card__body cms-empty">載入中…</div>
+  </div>
+} @else if (partner(); as item) {
+  <div class="cms-card">
+    <div class="cms-card__body">
+      <h2 class="cms-card__title">廠商資料</h2>
+
+      <dl class="cms-detail-grid">
+        <dt class="cms-detail-grid__label">主代碼</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-pkid">{{ item.pkid }}</dd>
+
+        <dt class="cms-detail-grid__label">廠商名稱</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-name">{{ item.name }}</dd>
+
+        <dt class="cms-detail-grid__label">應用代碼</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-app-key">{{ item.appKey }}</dd>
+
+        <dt class="cms-detail-grid__label">廠商選單顯示名稱</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-name-on-partner-menu">
+          {{ item.nameOnPartnerMenu }}
+        </dd>
+
+        <dt class="cms-detail-grid__label">課程明細頁顯示名稱</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-name-on-course-detail-page">
+          {{ item.nameOnCourseDetailPage }}
+        </dd>
+
+        <dt class="cms-detail-grid__label">顯示順序</dt>
+        <dd
+          class="cms-detail-grid__value cms-detail-grid__value--number"
+          data-testid="detail-display-order"
+        >
+          {{ item.displayOrder }}
+        </dd>
+
+        <dt class="cms-detail-grid__label">圖檔名稱</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-image-filename">
+          {{ item.imageFilename ?? '—' }}
+        </dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="cms-card">
+    <div class="cms-card__body">
+      <h2 class="cms-card__title">使用狀況</h2>
+
+      <dl class="cms-detail-grid">
+        <dt class="cms-detail-grid__label">對應課程</dt>
+        <dd
+          class="cms-detail-grid__value cms-detail-grid__value--number"
+          data-testid="detail-course-count"
+        >
+          {{ item.courseCount }}
+        </dd>
+
+        <dt class="cms-detail-grid__label">對應認證</dt>
+        <dd
+          class="cms-detail-grid__value cms-detail-grid__value--number"
+          data-testid="detail-certification-count"
+        >
+          {{ item.certificationCount }}
+        </dd>
+
+        <dt class="cms-detail-grid__label">對應廠商課程群組</dt>
+        <dd
+          class="cms-detail-grid__value cms-detail-grid__value--number"
+          data-testid="detail-partner-course-group-count"
+        >
+          {{ item.partnerCourseGroupCount }}
+        </dd>
+
+        <dt class="cms-detail-grid__label">對應促銷活動</dt>
+        <dd
+          class="cms-detail-grid__value cms-detail-grid__value--number"
+          data-testid="detail-promotion2-count"
+        >
+          {{ item.promotion2Count }}
+        </dd>
+
+        <dt class="cms-detail-grid__label">對應研討會</dt>
+        <dd
+          class="cms-detail-grid__value cms-detail-grid__value--number"
+          data-testid="detail-seminar-count"
+        >
+          {{ item.seminarCount }}
+        </dd>
+      </dl>
+
+      @if (isUnused) {
+        <p class="cms-empty" data-testid="detail-unused">
+          尚未被任何課程、認證、廠商課程群組、促銷活動或研討會使用。
+        </p>
+      }
+    </div>
+  </div>
+} @else {
+  <div class="cms-card">
+    <div class="cms-card__body cms-empty" data-testid="detail-not-found">查無此合作廠商。</div>
+  </div>
+}
