@@ -1,0 +1,57 @@
+<form [formGroup]="form" (ngSubmit)="save()">
+  <div class="cms-card cms-page-header">
+    <div class="cms-page-header__titles">
+      <h1 class="cms-page-header__title" data-testid="form-title">{{ title }}</h1>
+    </div>
+
+    <div class="cms-page-header__actions">
+      <p-button
+        type="button"
+        label="取消"
+        icon="pi pi-times"
+        severity="secondary"
+        [text]="true"
+        (onClick)="cancel()"
+      />
+      <p-button
+        type="submit"
+        label="儲存"
+        icon="pi pi-check"
+        [loading]="saving()"
+        data-testid="save-group"
+      />
+    </div>
+  </div>
+
+  <div class="cms-card">
+    <div class="cms-card__body">
+      <h2 class="cms-card__title">群組資料</h2>
+
+      @if (isEdit) {
+        <div class="cms-field">
+          <span class="cms-field__label">主代碼</span>
+          <div class="cms-field__readonly" data-testid="form-pkid">{{ pkid() }}</div>
+          <small class="cms-field__hint">主代碼由系統自動編號，不可變更。</small>
+        </div>
+      }
+
+      <div class="cms-field">
+        <label class="cms-field__label" for="description">
+          群組名稱 <span class="cms-field__required">*</span>
+        </label>
+        <input
+          pInputText
+          id="description"
+          formControlName="description"
+          placeholder="例：SharePoint系列課程"
+          data-testid="input-description"
+        />
+        @if (isInvalid('description')) {
+          <small class="cms-field__error" data-testid="error-description">
+            群組名稱為必填，且長度不可超過 100 字。
+          </small>
+        }
+      </div>
+    </div>
+  </div>
+</form>

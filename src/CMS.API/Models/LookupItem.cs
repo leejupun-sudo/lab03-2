@@ -31,3 +31,14 @@ public class PublishStatusLookup
     /// <summary>顯示標籤 — 即狀態名稱, 例: <c>上架中</c>.</summary>
     public string Label => Description;
 }
+
+/// <summary>課程群組下拉選單項目 — value 為 pkid.</summary>
+public class CourseGroupLookup
+{
+    public short Pkid { get; set; }
+
+    public string Description { get; set; } = string.Empty;
+
+    /// <summary>顯示標籤 — 即群組名稱, 例: <c>SharePoint系列課程</c>.</summary>
+    public string Label => Description;
+}

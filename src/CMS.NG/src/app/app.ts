@@ -39,6 +39,12 @@ export class App {
         { label: '發布狀態 PublishStatus', icon: 'pi pi-flag', route: '/publish-statuses' },
       ],
     },
+    {
+      label: '課程管理 Course',
+      icon: 'pi pi-book',
+      expanded: true,
+      items: [{ label: '課程群組 CourseGroup', icon: 'pi pi-tags', route: '/course-groups' }],
+    },
   ]);
 
   protected toggleSidebar(): void {

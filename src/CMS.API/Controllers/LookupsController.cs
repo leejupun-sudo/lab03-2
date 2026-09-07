@@ -31,4 +31,13 @@ public class LookupsController : ControllerBase
         var statuses = await _repository.GetPublishStatusesAsync(cancellationToken);
         return Ok(statuses);
     }
+
+    /// <summary>課程群組清單 (CourseGroup).</summary>
+    [HttpGet("course-groups")]
+    [ProducesResponseType(typeof(IEnumerable<CourseGroupLookup>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<CourseGroupLookup>>> GetCourseGroups(CancellationToken cancellationToken)
+    {
+        var groups = await _repository.GetCourseGroupsAsync(cancellationToken);
+        return Ok(groups);
+    }
 }
