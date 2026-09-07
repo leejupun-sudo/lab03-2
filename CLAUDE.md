@@ -38,6 +38,12 @@ These cost time if rediscovered — they are properties of this machine, not the
   `cat <<'EOF'` collapsed `\\SQLEXPRESS` to `\SQLEXPRESS` and produced invalid JSON.
   Use the Write tool for JSON/SQL content containing escapes.
 - Chinese output from `dotnet` is expected — the CLI is localised zh-TW.
+- **`python` on PATH is the WindowsApps stub** — it exits silently doing nothing, so a
+  heredoc script "succeeds" without running. Use the Edit tool or PowerShell instead.
+- **`sqlcmd` mangles Chinese on the terminal** (and `-u`/`-o` trip over `-E`). For probes
+  that need readable `nvarchar` values, use `System.Data.SqlClient` from PowerShell:
+  `New-Object System.Data.SqlClient.SqlConnection("Server=.\SQLEXPRESS;Database=CMS;Integrated Security=true;TrustServerCertificate=true")`.
+  Numeric probes are fine through `sqlcmd -S .\SQLEXPRESS -d CMS -E -C -h -1 -W`.
 
 ## Commands
 
@@ -71,7 +77,7 @@ writes with an in-memory repository instead.
 - Alias FK columns in SELECT (`c.Partner_pkid AS PartnerPkid`) so Dapper maps them.
 - Duplicate natural keys return `409` with a `ProblemDetails` body, not `500`.
 
-### Three things the schema will not tell you — check the live DB first
+### Four things the schema will not tell you — check the live DB first
 
 Read-only probes against `.\SQLEXPRESS` are cheap and have caught a real bug in every
 feature so far. Run them before writing the repository, not after.
@@ -79,8 +85,8 @@ feature so far. Run them before writing the repository, not after.
 - **A table that is an FK target needs a delete guard.** No table here declares
   `ON DELETE`, so deleting a referenced row raises an FK violation — a `500`, which the
   rule above forbids. Carry usage-count subqueries in every SELECT and gate `DELETE`
-  behind an `IsInUseAsync`, returning `409`. Both `PublishStatus` and `CourseGroup` do
-  this; copy either.
+  behind an `IsInUseAsync`, returning `409`. `PublishStatus`, `CourseGroup` and `Partner`
+  all do this; copy any of them (`Partner` is the five-count example).
 - **Do not assume a "name" column is unique.** `CourseGroup.Description` has no `UNIQUE`
   constraint and the live table holds duplicates (215 rows, 213 distinct). Adding the
   usual duplicate check there would contradict the schema *and* make the existing twin
@@ -91,8 +97,19 @@ feature so far. Run them before writing the repository, not after.
   `SCOPE_IDENTITY()`, and a duplicate is a `409`. Where the PK *is* IDENTITY, cast
   `SCOPE_IDENTITY()` to the column's own type (`smallint` for `CourseGroup`, not `int`).
 
+- **A reference can exist with no `FOREIGN KEY` behind it.** `Seminar.Partner_pkid` points
+  at `Partner.pkid` across 364 live rows, but `sys.foreign_keys` returns **0** constraints
+  for `Seminar` — the DDL declares none. A guard built from the `.sql` files alone misses
+  it, and deleting a partner referenced only by `Seminar` succeeds, orphaning the rows
+  silently. That is not hypothetical: `Partner` 122 is exactly such a row. Enumerate
+  references with `sys.foreign_keys`, then also grep the DDL for `{Table}_pkid` columns the
+  constraint list does not cover.
+
 An FK-target PK is also **immutable** — never write it in `UPDATE`, and disable the
 control in the edit form. Same hazard as `AppRole.RoleId`.
+
+The distinct-vs-total probe cuts both ways: on `Partner` it rules a duplicate check *out*
+for `Name` (66 rows / 64 distinct) and *in* for `AppKey` (66/66), in the same table.
 
 ### Junction table, or entity in its own right?
 
@@ -112,7 +129,8 @@ binding, DataAnnotations validation and JSON casing without a database. `Program
 with `public partial class Program;` to make that possible — keep it.
 
 One factory + one fake per feature (`AppRoleApiFactory`, `PublishStatusApiFactory`,
-`CourseGroupApiFactory`, plus `LookupApiFactory` for `LookupsController`). **Construct a
+`CourseGroupApiFactory`, `PartnerApiFactory`, plus `LookupApiFactory` for
+`LookupsController`). **Construct a
 fresh factory per test** — the fakes hold mutable state. Seed the fake with data that
 actually exercises the rules: a referenced row so the delete guard has something to block,
 and duplicate names where duplicates are legal.
@@ -200,6 +218,33 @@ Spec: `spec/course/CourseGroup.md`.
 - 215 lookup options is past the ~100 threshold, so consumers need `[filter]` and
   `[virtualScroll]`.
 
+## Feature: 合作廠商 Partner (implemented)
+
+Sidebar **課程管理 Course → 合作廠商 Partner** (above CourseGroup); routes under `/partners`.
+Spec: `spec/course/Partner.md`.
+
+- `pkid smallint IDENTITY`, immutable — the most-referenced FK target in the schema.
+- **`Seminar` references it with no FK constraint.** `SeminarCount` is carried in every
+  SELECT and blocks `DELETE` alongside the four enforced references (Course, Certification,
+  PartnerCourseGroup, Promotion2). See the schema-traps note above; dropping it as
+  "redundant" reintroduces the bug.
+- **`Name` gets no duplicate check; `AppKey` does.** 66 rows / 64 distinct names
+  (「國際標準課程」 ×3) versus 66/66 distinct AppKeys. The AppKey 409 is an *application*
+  rule — no `UNIQUE` index backs it — so re-run the distinct probe before relying on it.
+- Default sort is `DisplayOrder ASC, Name ASC, pkid ASC`. All three keys are needed: 23 rows
+  share the `9999` "park at the end" sentinel and `Name` is not unique either, so without
+  `pkid` the order is undefined and paging is unstable.
+- **`ImageFilename` has no format guarantee** — 17 of the 62 non-null values carry no
+  extension at all (`Splunk`, `恆逸`, `轉職培訓`). No regex, no `<img src>`; it renders as
+  text and stores `null` when blank.
+- `PartnerLookup.Label` is `Name (AppKey)`, not bare `Name` — three rows share a name and
+  would otherwise render as indistinguishable dropdown options. This deviates from
+  `spec/sample1.spec.md`; reconcile when the Course feature is built. 66 options needs
+  `[filter]` but **not** `[virtualScroll]`.
+- The list page shows one summed **使用中** column; the detail page breaks the five counts
+  out separately. Link buttons are deferred — `/courses`, `/certifications`,
+  `/partner-course-groups`, `/promotion2s` and `/seminars` are all dead routes.
+
 ## Gaps between the `/crud` skill and this codebase
 
 The skill's step list is not fully implementable here yet. Do not silently skip these —
@@ -210,10 +255,11 @@ say so in the report.
   a `RowAudit` *table*, but there is no C# writer and no Angular component, and no
   implemented feature uses either. Building that infrastructure is separate work; until
   then, follow the AppRole shape and note the omission.
-- **Primary-Foreign link buttons** need the child feature to exist first. `PublishStatus`
-  and `CourseGroup` both ship usage *counts* as plain numbers because `/courses`,
-  `/promotion2s` and `/partner-course-groups` are dead routes. The specs record the
-  routes and query-param names as the contract to build against.
+- **Primary-Foreign link buttons** need the child feature to exist first. `PublishStatus`,
+  `CourseGroup` and `Partner` all ship usage *counts* as plain numbers because `/courses`,
+  `/certifications`, `/promotion2s`, `/partner-course-groups` and `/seminars` are dead
+  routes. The specs record the routes and query-param names as the contract to build
+  against.
 - **The junction heuristic can be wrong** — see above.
 
 ## Adding a feature
