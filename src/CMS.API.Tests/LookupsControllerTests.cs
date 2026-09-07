@@ -46,6 +46,41 @@ public class LookupsControllerTests
     }
 
     [Fact]
+    public async Task GetCourseGroups_ReturnsRowsOrderedByDescription()
+    {
+        using var factory = new LookupApiFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/lookups/course-groups");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var groups = await response.Content.ReadFromJsonAsync<List<CourseGroupLookup>>(JsonOptions);
+        Assert.NotNull(groups);
+        Assert.Equal(
+            ["Azure系列課程", "PMI®專案管理認證系列", "SharePoint系列課程"],
+            groups.Select(g => g.Description));
+        Assert.Equal([(short)3, (short)5, (short)7], groups.Select(g => g.Pkid));
+    }
+
+    [Fact]
+    public async Task GetCourseGroups_SerializesLabelOnTheWire()
+    {
+        using var factory = new LookupApiFactory();
+        using var client = factory.CreateClient();
+
+        var json = await client.GetStringAsync("/api/lookups/course-groups");
+
+        using var document = JsonDocument.Parse(json);
+        var labels = document.RootElement.EnumerateArray()
+            .Select(element => element.GetProperty("label").GetString())
+            .ToList();
+
+        Assert.Equal(
+            ["Azure系列課程", "PMI®專案管理認證系列", "SharePoint系列課程"],
+            labels);
+    }
+
+    [Fact]
     public async Task GetAppUsers_SerializesTheComposedLabelOnTheWire()
     {
         using var factory = new LookupApiFactory();
