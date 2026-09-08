@@ -156,6 +156,24 @@ Spec: `spec/course/Course.md` — the longest one, because this table has every 
   `/api/lookups/courses` (1084 — consumers need `[virtualScroll]`).
 - The list honours incoming `partnerPkid`, `courseGroupPkid` and `publishStatusPkid` query
   params over the saved filter. Its four child routes are dead, so counts are plain numbers.
+- **The list page edits in place, and does not use `pEditableColumn`.** PrimeNG's directive
+  opens on a *single* click with no dblclick hook, and its only validity check is a
+  synchronous `.ng-invalid` scan — neither fits "double-click to edit, validate, PUT, revert
+  on failure". The cells are driven from `CourseList`'s own `editing` / `editError` /
+  `savingCell` / `overlayOpen` signals over the same PrimeNG widgets the form uses.
+  Ten columns are editable; the four that are not are 主代碼 (IDENTITY), **簡介代碼**
+  (`UpdateAsync` omits `CourseId`, so an edit would be silently discarded — rename via 複製),
+  and 原廠 / 課程群組 (JOINed labels with 66 and 215 options; 上架狀態 is an FK too but its
+  five options fit a cell `p-select`).
+- **Inline save does `getById` before `update`, and that GET is load-bearing.** Every PUT
+  re-syncs both junctions from the request, and list rows carry no `certificationPkids` /
+  `jobCategoryPkids` — PUTting a request built from the list row alone deletes every
+  `CourseInCertification` and `CourseJobCategories` row for that course. A test guards it.
+- Nothing mutates `courses()` until the PUT resolves, so **closing the editor is the revert**;
+  an invalid value keeps the cell open with its message instead. `[min]` is deliberately off
+  the inline `p-inputnumber`s — clamping would swallow the error the user needs to see. The
+  overlay-backed editors (上架狀態, both dates) commit through `commitOnBlur()`, which
+  no-ops while their `appendTo="body"` panel is open.
 - Column labels came with the `/crud` invocation and override `sample1`: 簡介代碼
   (CourseId), 科目代碼 (ProdCourseId), 原廠 (Partner), 上架狀態 (PublishStatus), 點數
   (LearningCredit), 允許重聽 (CanRepeat).

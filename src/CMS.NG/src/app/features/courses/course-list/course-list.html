@@ -19,6 +19,11 @@
 </div>
 
 <div class="cms-card">
+  <p class="cms-inline-edit-hint">
+    可直接於表格內編輯：<b>雙擊</b>儲存格開始編輯，離開欄位 (或按 Enter) 即自動儲存，按 Esc
+    取消。主代碼、簡介代碼、原廠、課程群組為唯讀欄位。
+  </p>
+
   <!-- 14 data columns: the wrapper scrolls horizontally, the page body never does. -->
   <div class="cms-table-scroll">
     <p-table
@@ -74,19 +79,102 @@
         </tr>
       </ng-template>
 
+      <!--
+        Inline editing: every `cms-cell--editable` td opens its editor on dblclick only.
+        The four read-only columns (主代碼 / 簡介代碼 / 原廠 / 課程群組) carry no handler —
+        see EditableField in course-list.ts for why each one is excluded.
+      -->
       <ng-template #body let-course>
+        <!-- One message at a time: only one cell is ever in edit mode. -->
+        <ng-template #cellError>
+          @if (editError(); as message) {
+            <small class="cms-inline-error" data-testid="edit-error">{{ message }}</small>
+          }
+        </ng-template>
+
         <tr data-testid="course-row">
-          <td>{{ course.pkid }}</td>
-          <td class="cms-cell--number">{{ course.displayOrder }}</td>
-          <td data-testid="cell-course-id">{{ course.courseId }}</td>
-          <td>{{ course.prodCourseId }}</td>
-          <td>{{ course.title }}</td>
-          <td>
+          <td data-testid="editcell-pkid">{{ course.pkid }}</td>
+
+          <td
+            class="cms-cell--number cms-cell--editable"
+            data-testid="editcell-display-order"
+            (dblclick)="startEdit(course, 'displayOrder', $event.currentTarget)"
+          >
+            @if (isEditing(course, 'displayOrder')) {
+              <p-inputnumber
+                styleClass="cms-inline-editor"
+                [ngModel]="editing()?.value"
+                (ngModelChange)="setEditValue($event)"
+                [useGrouping]="false"
+                [maxFractionDigits]="0"
+                data-testid="editor-display-order"
+                (onBlur)="commit()"
+                (keydown.enter)="commit()"
+                (keydown.escape)="cancelEdit()"
+              />
+              <ng-container [ngTemplateOutlet]="cellError"></ng-container>
+            } @else {
+              {{ course.displayOrder }}
+            }
+          </td>
+
+          <td data-testid="editcell-course-id">
+            <span data-testid="cell-course-id">{{ course.courseId }}</span>
+          </td>
+
+          <td
+            class="cms-cell--editable"
+            data-testid="editcell-prod-course-id"
+            (dblclick)="startEdit(course, 'prodCourseId', $event.currentTarget)"
+          >
+            @if (isEditing(course, 'prodCourseId')) {
+              <input
+                pInputText
+                class="cms-inline-editor"
+                maxlength="50"
+                [ngModel]="editing()?.value"
+                (ngModelChange)="setEditValue($event)"
+                data-testid="editor-prod-course-id"
+                (blur)="commit()"
+                (keydown.enter)="commit()"
+                (keydown.escape)="cancelEdit()"
+              />
+              <ng-container [ngTemplateOutlet]="cellError"></ng-container>
+            } @else {
+              {{ course.prodCourseId }}
+            }
+          </td>
+
+          <td
+            class="cms-cell--editable"
+            data-testid="editcell-title"
+            (dblclick)="startEdit(course, 'title', $event.currentTarget)"
+          >
+            @if (isEditing(course, 'title')) {
+              <input
+                pInputText
+                class="cms-inline-editor"
+                maxlength="200"
+                [ngModel]="editing()?.value"
+                (ngModelChange)="setEditValue($event)"
+                data-testid="editor-title"
+                (blur)="commit()"
+                (keydown.enter)="commit()"
+                (keydown.escape)="cancelEdit()"
+              />
+              <ng-container [ngTemplateOutlet]="cellError"></ng-container>
+            } @else {
+              {{ course.title }}
+            }
+          </td>
+
+          <td data-testid="editcell-partner-name">
             <a [routerLink]="['/partners', course.partnerPkid]" class="cms-link" data-testid="cell-partner">
               {{ course.partnerName }}
             </a>
           </td>
-          <td>
+
+          <td data-testid="editcell-course-group">
             @if (course.courseGroupPkid) {
               <a
                 [routerLink]="['/course-groups', course.courseGroupPkid]"
@@ -99,21 +187,179 @@
               <span class="cms-empty" data-testid="cell-course-group">—</span>
             }
           </td>
-          <td>
-            <a
-              [routerLink]="['/publish-statuses', course.publishStatusPkid]"
-              class="cms-link"
-              data-testid="cell-publish-status"
-            >
-              {{ course.publishStatusDescription }}
-            </a>
+
+          <td
+            class="cms-cell--editable"
+            data-testid="editcell-publish-status"
+            (dblclick)="startEdit(course, 'publishStatusPkid', $event.currentTarget)"
+          >
+            @if (isEditing(course, 'publishStatusPkid')) {
+              <p-select
+                styleClass="cms-inline-editor"
+                optionLabel="label"
+                optionValue="pkid"
+                appendTo="body"
+                [options]="publishStatuses()"
+                [ngModel]="editing()?.value"
+                (ngModelChange)="setEditValue($event)"
+                data-testid="editor-publish-status"
+                (onShow)="overlayOpen.set(true)"
+                (onHide)="overlayOpen.set(false)"
+                (onChange)="commit()"
+                (onBlur)="commitOnBlur()"
+                (keydown.escape)="cancelEdit()"
+              />
+              <ng-container [ngTemplateOutlet]="cellError"></ng-container>
+            } @else {
+              <a
+                [routerLink]="['/publish-statuses', course.publishStatusPkid]"
+                class="cms-link"
+                data-testid="cell-publish-status"
+              >
+                {{ course.publishStatusDescription }}
+              </a>
+            }
           </td>
-          <td>{{ course.scheduleOn }}</td>
-          <td>{{ course.scheduleOff }}</td>
-          <td class="cms-cell--number">{{ course.hour }}</td>
-          <td class="cms-cell--number">{{ course.listPrice | number: '1.0-0' }}</td>
-          <td class="cms-cell--number">{{ course.learningCredit | number: '1.0-1' }}</td>
-          <td class="cms-cell--center" data-testid="cell-can-repeat">{{ course.canRepeat ? '是' : '否' }}</td>
+
+          <td
+            class="cms-cell--editable"
+            data-testid="editcell-schedule-on"
+            (dblclick)="startEdit(course, 'scheduleOn', $event.currentTarget)"
+          >
+            @if (isEditing(course, 'scheduleOn')) {
+              <p-datepicker
+                styleClass="cms-inline-editor"
+                dateFormat="yy-mm-dd"
+                appendTo="body"
+                [ngModel]="editing()?.value"
+                (ngModelChange)="setEditValue($event)"
+                data-testid="editor-schedule-on"
+                (onShow)="overlayOpen.set(true)"
+                (onClose)="overlayOpen.set(false)"
+                (onSelect)="commit()"
+                (onBlur)="commitOnBlur()"
+                (keydown.escape)="cancelEdit()"
+              />
+              <ng-container [ngTemplateOutlet]="cellError"></ng-container>
+            } @else {
+              {{ course.scheduleOn }}
+            }
+          </td>
+
+          <td
+            class="cms-cell--editable"
+            data-testid="editcell-schedule-off"
+            (dblclick)="startEdit(course, 'scheduleOff', $event.currentTarget)"
+          >
+            @if (isEditing(course, 'scheduleOff')) {
+              <p-datepicker
+                styleClass="cms-inline-editor"
+                dateFormat="yy-mm-dd"
+                appendTo="body"
+                [ngModel]="editing()?.value"
+                (ngModelChange)="setEditValue($event)"
+                data-testid="editor-schedule-off"
+                (onShow)="overlayOpen.set(true)"
+                (onClose)="overlayOpen.set(false)"
+                (onSelect)="commit()"
+                (onBlur)="commitOnBlur()"
+                (keydown.escape)="cancelEdit()"
+              />
+              <ng-container [ngTemplateOutlet]="cellError"></ng-container>
+            } @else {
+              {{ course.scheduleOff }}
+            }
+          </td>
+
+          <td
+            class="cms-cell--number cms-cell--editable"
+            data-testid="editcell-hour"
+            (dblclick)="startEdit(course, 'hour', $event.currentTarget)"
+          >
+            @if (isEditing(course, 'hour')) {
+              <p-inputnumber
+                styleClass="cms-inline-editor"
+                [ngModel]="editing()?.value"
+                (ngModelChange)="setEditValue($event)"
+                [useGrouping]="false"
+                [maxFractionDigits]="0"
+                data-testid="editor-hour"
+                (onBlur)="commit()"
+                (keydown.enter)="commit()"
+                (keydown.escape)="cancelEdit()"
+              />
+              <ng-container [ngTemplateOutlet]="cellError"></ng-container>
+            } @else {
+              {{ course.hour }}
+            }
+          </td>
+
+          <td
+            class="cms-cell--number cms-cell--editable"
+            data-testid="editcell-list-price"
+            (dblclick)="startEdit(course, 'listPrice', $event.currentTarget)"
+          >
+            @if (isEditing(course, 'listPrice')) {
+              <p-inputnumber
+                styleClass="cms-inline-editor"
+                [ngModel]="editing()?.value"
+                (ngModelChange)="setEditValue($event)"
+                [useGrouping]="false"
+                [maxFractionDigits]="0"
+                data-testid="editor-list-price"
+                (onBlur)="commit()"
+                (keydown.enter)="commit()"
+                (keydown.escape)="cancelEdit()"
+              />
+              <ng-container [ngTemplateOutlet]="cellError"></ng-container>
+            } @else {
+              {{ course.listPrice | number: '1.0-0' }}
+            }
+          </td>
+
+          <td
+            class="cms-cell--number cms-cell--editable"
+            data-testid="editcell-learning-credit"
+            (dblclick)="startEdit(course, 'learningCredit', $event.currentTarget)"
+          >
+            @if (isEditing(course, 'learningCredit')) {
+              <p-inputnumber
+                styleClass="cms-inline-editor"
+                [ngModel]="editing()?.value"
+                (ngModelChange)="setEditValue($event)"
+                [useGrouping]="false"
+                [maxFractionDigits]="1"
+                data-testid="editor-learning-credit"
+                (onBlur)="commit()"
+                (keydown.enter)="commit()"
+                (keydown.escape)="cancelEdit()"
+              />
+              <ng-container [ngTemplateOutlet]="cellError"></ng-container>
+            } @else {
+              {{ course.learningCredit | number: '1.0-1' }}
+            }
+          </td>
+
+          <td
+            class="cms-cell--center cms-cell--editable"
+            data-testid="editcell-can-repeat"
+            (dblclick)="startEdit(course, 'canRepeat', $event.currentTarget)"
+          >
+            @if (isEditing(course, 'canRepeat')) {
+              <p-checkbox
+                [binary]="true"
+                [ngModel]="editing()?.value"
+                (ngModelChange)="setEditValue($event)"
+                data-testid="editor-can-repeat"
+                (onBlur)="commit()"
+                (keydown.escape)="cancelEdit()"
+              />
+              <ng-container [ngTemplateOutlet]="cellError"></ng-container>
+            } @else {
+              <span data-testid="cell-can-repeat">{{ course.canRepeat ? '是' : '否' }}</span>
+            }
+          </td>
+
           <td class="cms-cell--actions">
             <p-button
               icon="pi pi-eye"

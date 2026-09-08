@@ -98,6 +98,13 @@ to "verify" an endpoint without asking — the xUnit suite covers writes with in
 - PrimeNG: overlays need `appendTo="body"`; `[filter]` past ~10 options, `[virtualScroll]`
   past ~100; tri-state filters use `p-select`, not a checkbox. Autocomplete endpoints (capped
   server search) must not be bound to a `p-select`.
+- **Inline cell editing is hand-rolled, not `pEditableColumn`** (Course list is the one
+  page with it). That directive opens on a *single* click and its only validity check is a
+  synchronous `.ng-invalid` scan, so it cannot express dblclick-to-open or an async
+  validated save. Pattern: dblclick opens, blur commits, an invalid value keeps the cell
+  open, and the row is never mutated until the write resolves — so closing the editor *is*
+  the revert. An inline save that PUTs a parent with junctions must re-read the full row
+  first (`docs/claude/features.md`).
 - **A CommonJS runtime dependency** (the first is `qrcode`) must be listed in
   `angular.json` under `allowedCommonJsDependencies`, or every build warns.
 - Dates: `date` columns travel as `yyyy-MM-dd`; convert with `core/utils/date.util.ts`

@@ -679,6 +679,71 @@ Columns, in the order supplied with the invocation:
   `courseId title` and one input for the new 簡介代碼; on success navigates to the new
   course's detail page. 409 → 簡介代碼「X」已存在。
 
+#### List — inline cell editing
+
+Ten of the fourteen data columns are editable in place on the list page. This is the first
+page in the app with inline editing, and it deviates from PrimeNG's own recipe on purpose.
+
+**Why not `pEditableColumn`.** PrimeNG's `EditableColumn` directive opens the editor on a
+single `click`, offers no hook to switch that to `dblclick`, and its only validity check is
+`isEditingCellValid()` — a synchronous scan for `.ng-invalid` inside the cell. It cannot
+express "commit asynchronously, and if the server rejects it, revert". The cells are
+therefore driven from `CourseList` (`editing` / `editError` / `savingCell` / `overlayOpen`
+signals) and reuse the same PrimeNG input widgets the edit form uses. `.cms-cell--editable`
+supplies the hover affordance `p-editable-column` would have.
+
+**Four read-only columns**, each for a different reason:
+
+| Column | Why it is not editable |
+|--------|------------------------|
+| 主代碼 | `int IDENTITY` |
+| 簡介代碼 | `UpdateAsync` omits `CourseId` from the `SET` list because `CourseRecomm` references courses by that *string* with no FK, so a PUT carrying a change is **silently discarded**. Renaming goes through 複製. |
+| 原廠 | JOINed FK label, not a column of `Course`; 66 filtered options belong in the form |
+| 課程群組 | JOINed FK label; 215 options need `[filter]` + `[virtualScroll]` |
+
+上架狀態 is an FK too but has five options, so it does fit a cell `p-select`.
+
+**Editors and validation** (`validateCell` in `course-list.ts`, mirroring the form's rules):
+
+| Column | Editor | Rules |
+|--------|--------|-------|
+| 顯示順序 | `p-inputnumber` | required, integer, 0–9999 |
+| 科目代碼 | `input[pInputText]` | required (non-blank), max 50 |
+| 課程名稱 | `input[pInputText]` | required (non-blank), max 200 |
+| 上架狀態 | `p-select` | required |
+| 上架日期 | `p-datepicker` | required, valid date, ≤ 下架日期 |
+| 下架日期 | `p-datepicker` | required, valid date, ≥ 上架日期 |
+| 時數 | `p-inputnumber` | required, integer, 0–32767 |
+| 定價 | `p-inputnumber` | required, 0–999999999 |
+| 點數 | `p-inputnumber` | required, 0–99999999.9 (1 decimal) |
+| 允許重聽 | `p-checkbox` (binary) | none — a checkbox has no invalid state |
+
+**`[min]` is deliberately not set on the number editors.** Clamping would silently rewrite a
+negative entry instead of telling the user why it was rejected.
+
+**Save must read the row first.** `UpdateAsync` re-syncs `CourseInCertification` and
+`CourseJobCategories` from the request on *every* PUT, and list rows do not carry
+`certificationPkids` / `jobCategoryPkids` — only `GET /api/courses/{id}` does. A request
+built from the list row alone would send `[]` for both and **delete every junction row for
+the course**. `commit()` therefore does `getById` → merge the one edited column → `update`.
+There is a regression test for this; do not "optimise away" the extra GET.
+
+**Commit and revert.**
+
+- Double-click opens the editor; a single click must not. Enter commits, Esc cancels.
+- The edited value lives in the `editing` signal, never on the row. Nothing mutates
+  `courses()` until the PUT succeeds, so *closing the editor is the revert* — on a failed
+  save the cell simply re-renders the untouched row, plus an error toast (404 → 請重新整理
+  清單, otherwise 已還原原值).
+- On success the row is patched from the PUT response, which is a fresh `GetByIdAsync` and
+  so carries the re-JOINed labels (editing 上架狀態 updates 上架狀態 text as well as pkid).
+- **Invalid keeps the cell open**: the message renders under the editor and the value can be
+  corrected in place. Only a *valid* edit ever reaches the API.
+- An unchanged value closes the editor without any HTTP call.
+- 上架狀態 and the two dates append their panels to `body`, so reaching for the panel blurs
+  the input. Their blur handler is `commitOnBlur()`, which no-ops while `overlayOpen()`;
+  picking a value fires `onChange` / `onSelect`, and that commits.
+
 ### Detail component
 
 Three cards: 基本資料 (identity, FK labels as links, dates, numbers, 允許重聽, then the QR

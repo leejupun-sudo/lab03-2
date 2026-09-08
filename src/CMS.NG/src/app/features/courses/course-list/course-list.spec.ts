@@ -1,3 +1,4 @@
+import { EventEmitter } from '@angular/core';
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -7,11 +8,11 @@ import { Confirmation, ConfirmationService, MessageService } from 'primeng/api';
 import { providePrimeNG } from 'primeng/config';
 import { Observable, of, throwError } from 'rxjs';
 
-import { Course, CourseQuery } from '@core/models/course.model';
+import { Course, CourseQuery, CourseRequest } from '@core/models/course.model';
 import { CourseService } from '@core/services/course.service';
 import { LookupService } from '@core/services/lookup.service';
 import { makeCourse } from '@core/services/course.service.spec';
-import { CourseList } from './course-list';
+import { CourseList, EditValue, EditableField, validateCell } from './course-list';
 
 // Server-ordered: CourseId ASC. pkid 41 is referenced only by CourseRecomm (no FK).
 const COURSES: Course[] = [
@@ -41,6 +42,23 @@ const COURSES: Course[] = [
   makeCourse({ pkid: 35, faqCount: 2, relatedLinkCount: 3 }),
 ];
 
+/**
+ * What `GET /api/courses/{id}` adds over a list row: the two junction id lists. Inline
+ * save must read this before it PUTs, or `UpdateAsync` re-syncs both junctions from an
+ * empty request and wipes them.
+ */
+const FULL_COURSE: Course = makeCourse({
+  pkid: 2063,
+  courseId: '14064GLV',
+  title: 'ISO 14064溫室氣體主導查證師／確證師訓練課程',
+  publishStatusPkid: 2,
+  publishStatusDescription: '上架中',
+  learningCredit: 12.5,
+  canRepeat: true,
+  certificationPkids: [7, 9],
+  jobCategoryPkids: [3],
+});
+
 interface ListInternals {
   filters: {
     keyword: string | null;
@@ -57,6 +75,16 @@ interface ListInternals {
   confirmDelete(course: Course): void;
   openCopy(course: Course): void;
   copy(): void;
+  // ---- inline cell editing ----
+  editing(): { pkid: number; field: EditableField; value: EditValue } | null;
+  editError(): string | null;
+  savingCell(): boolean;
+  overlayOpen: { set(open: boolean): void };
+  startEdit(course: Course, field: EditableField, cell?: EventTarget | null): void;
+  setEditValue(value: EditValue): void;
+  commit(): void;
+  commitOnBlur(): void;
+  cancelEdit(): void;
 }
 
 describe('CourseList', () => {
@@ -71,10 +99,20 @@ describe('CourseList', () => {
     queryResult: Observable<Course[]> = of(COURSES),
     queryParams: Record<string, string> = {},
   ): void {
-    service = jasmine.createSpyObj<CourseService>('CourseService', ['query', 'delete', 'copy']);
+    service = jasmine.createSpyObj<CourseService>('CourseService', [
+      'query',
+      'delete',
+      'copy',
+      'getById',
+      'update',
+    ]);
     service.query.and.returnValue(queryResult);
     service.delete.and.returnValue(of(void 0));
     service.copy.and.returnValue(of(makeCourse({ pkid: 3341, courseId: 'PLF-2' })));
+    service.getById.and.returnValue(of(FULL_COURSE));
+    service.update.and.callFake((request: CourseRequest) =>
+      of({ ...FULL_COURSE, ...request } as Course),
+    );
 
     lookupService = jasmine.createSpyObj<LookupService>('LookupService', [
       'getPartners',
@@ -120,6 +158,51 @@ describe('CourseList', () => {
     return fixture.debugElement
       .queryAll(By.css(`[data-testid="${testId}"]`))
       .map((cell) => ((cell.nativeElement as HTMLElement).textContent ?? '').trim());
+  }
+
+  // ---- inline-edit DOM helpers (row 0 is pkid 2063 unless a row index is given) ----
+
+  function cell(field: string, rowIndex = 0): HTMLElement {
+    return fixture.debugElement.queryAll(By.css(`[data-testid="editcell-${field}"]`))[rowIndex]
+      .nativeElement as HTMLElement;
+  }
+
+  function fire(field: string, type: 'dblclick' | 'click', rowIndex = 0): void {
+    cell(field, rowIndex).dispatchEvent(new MouseEvent(type, { bubbles: true }));
+    fixture.detectChanges();
+  }
+
+  function editor(field: string): HTMLElement | null {
+    const found = fixture.debugElement.query(By.css(`[data-testid="editor-${field}"]`));
+    return found ? (found.nativeElement as HTMLElement) : null;
+  }
+
+  function anyEditor(): boolean {
+    return fixture.debugElement.query(By.css('[data-testid^="editor-"]')) !== null;
+  }
+
+  /**
+   * Blurs an editor. A plain `<input>` takes a DOM event, but the PrimeNG editors expose
+   * `onBlur` as an `EventEmitter` that no native event reaches — emit on it instead.
+   */
+  function blurEditor(field: string): void {
+    const found = fixture.debugElement.query(By.css(`[data-testid="editor-${field}"]`));
+    const instance = found.componentInstance as { onBlur?: EventEmitter<unknown> } | null;
+    if (instance?.onBlur instanceof EventEmitter) {
+      instance.onBlur.emit(new FocusEvent('blur'));
+    } else {
+      (found.nativeElement as HTMLElement).dispatchEvent(new FocusEvent('blur'));
+    }
+    fixture.detectChanges();
+  }
+
+  function errorText(): string | null {
+    const found = fixture.debugElement.query(By.css('[data-testid="edit-error"]'));
+    return found ? ((found.nativeElement as HTMLElement).textContent ?? '').trim() : null;
+  }
+
+  function lastRequest(): CourseRequest {
+    return service.update.calls.mostRecent().args[0] as CourseRequest;
   }
 
   beforeEach(() => sessionStorage.clear());
@@ -345,4 +428,386 @@ describe('CourseList', () => {
 
     expect(fixture.debugElement.queryAll(By.css('[data-testid="course-row"]')).length).toBe(0);
   }));
+
+  // -------------------------------------------------------------------------
+  // 表格內即時編輯 (inline cell editing)
+  // -------------------------------------------------------------------------
+
+  describe('inline cell editing', () => {
+    describe('entering edit mode', () => {
+      it('opens the editor on a double-click', () => {
+        setup();
+
+        fire('title', 'dblclick');
+
+        expect(component.editing()).toEqual({
+          pkid: 2063,
+          field: 'title',
+          value: 'ISO 14064溫室氣體主導查證師／確證師訓練課程',
+        });
+        expect(editor('title')).not.toBeNull();
+      });
+
+      it('leaves the cell alone on a single click', () => {
+        setup();
+
+        fire('title', 'click');
+
+        expect(component.editing()).toBeNull();
+        expect(anyEditor()).toBeFalse();
+      });
+
+      it('opens the matching editor for every editable column', () => {
+        setup();
+
+        const columns: [string, EditableField][] = [
+          ['display-order', 'displayOrder'],
+          ['prod-course-id', 'prodCourseId'],
+          ['title', 'title'],
+          ['publish-status', 'publishStatusPkid'],
+          ['schedule-on', 'scheduleOn'],
+          ['schedule-off', 'scheduleOff'],
+          ['hour', 'hour'],
+          ['list-price', 'listPrice'],
+          ['learning-credit', 'learningCredit'],
+          ['can-repeat', 'canRepeat'],
+        ];
+
+        for (const [testId, field] of columns) {
+          fire(testId, 'dblclick');
+          expect(component.editing()?.field).withContext(testId).toBe(field);
+          expect(editor(testId)).withContext(testId).not.toBeNull();
+          component.cancelEdit();
+          fixture.detectChanges();
+        }
+      });
+
+      it('uses the input type each column calls for', () => {
+        setup();
+
+        fire('title', 'dblclick');
+        expect(editor('title')!.tagName).toBe('INPUT');
+        component.cancelEdit();
+        fixture.detectChanges();
+
+        fire('hour', 'dblclick');
+        expect(editor('hour')!.tagName.toLowerCase()).toBe('p-inputnumber');
+        component.cancelEdit();
+        fixture.detectChanges();
+
+        fire('schedule-on', 'dblclick');
+        expect(editor('schedule-on')!.tagName.toLowerCase()).toBe('p-datepicker');
+        component.cancelEdit();
+        fixture.detectChanges();
+
+        fire('publish-status', 'dblclick');
+        expect(editor('publish-status')!.tagName.toLowerCase()).toBe('p-select');
+        component.cancelEdit();
+        fixture.detectChanges();
+
+        fire('can-repeat', 'dblclick');
+        expect(editor('can-repeat')!.tagName.toLowerCase()).toBe('p-checkbox');
+      });
+
+      it('hands the date editor a Date and the select the FK pkid, not the rendered label', () => {
+        setup();
+
+        fire('schedule-on', 'dblclick');
+        expect(component.editing()!.value).toEqual(new Date(2015, 10, 10));
+        component.cancelEdit();
+
+        fire('publish-status', 'dblclick');
+        expect(component.editing()!.value).toBe(2);
+      });
+
+      it('closes the editor on Escape without saving', () => {
+        setup();
+
+        fire('title', 'dblclick');
+        component.setEditValue('改一半就放棄');
+        component.cancelEdit();
+        fixture.detectChanges();
+
+        expect(component.editing()).toBeNull();
+        expect(service.update).not.toHaveBeenCalled();
+        expect(cellsOf('editcell-title')[0]).toBe('ISO 14064溫室氣體主導查證師／確證師訓練課程');
+      });
+    });
+
+    describe('read-only columns', () => {
+      // 主代碼 is IDENTITY; 簡介代碼 is omitted from the UPDATE statement because
+      // CourseRecomm keys on the string; 原廠 / 課程群組 are JOINed FK labels.
+      const READ_ONLY = ['pkid', 'course-id', 'partner-name', 'course-group'];
+
+      it('does not open an editor on a double-click', () => {
+        setup();
+
+        for (const testId of READ_ONLY) {
+          fire(testId, 'dblclick');
+          expect(component.editing()).withContext(testId).toBeNull();
+          expect(anyEditor()).withContext(testId).toBeFalse();
+        }
+      });
+
+      it('carries no editable affordance, unlike every other column', () => {
+        setup();
+
+        for (const testId of READ_ONLY) {
+          expect(cell(testId).classList.contains('cms-cell--editable'))
+            .withContext(testId)
+            .toBeFalse();
+        }
+        expect(cell('title').classList.contains('cms-cell--editable')).toBeTrue();
+      });
+    });
+
+    describe('persisting on blur', () => {
+      it('reads the full row, then PUTs it with the edited column replaced', () => {
+        setup();
+
+        fire('title', 'dblclick');
+        component.setEditValue('  ISO 14064 溫室氣體訓練  ');
+        blurEditor('title');
+
+        expect(service.getById).toHaveBeenCalledWith(2063);
+        expect(service.update).toHaveBeenCalledTimes(1);
+        expect(lastRequest().title).toBe('ISO 14064 溫室氣體訓練');
+        expect(lastRequest().pkid).toBe(2063);
+      });
+
+      it('keeps both junction id lists, which the list row does not carry', () => {
+        // A request built from the list row alone would send [] and UpdateAsync would
+        // delete every CourseInCertification / CourseJobCategories row for the course.
+        setup();
+
+        fire('hour', 'dblclick');
+        component.setEditValue(21);
+        blurEditor('hour');
+
+        expect(lastRequest().certificationPkids).toEqual([7, 9]);
+        expect(lastRequest().jobCategoryPkids).toEqual([3]);
+      });
+
+      it('sends a date as an ISO yyyy-MM-dd string built from local components', () => {
+        setup();
+
+        fire('schedule-off', 'dblclick');
+        component.setEditValue(new Date(2030, 0, 1));
+        component.commit();
+
+        expect(lastRequest().scheduleOff).toBe('2030-01-01');
+      });
+
+      it('sends the checkbox as a boolean', () => {
+        setup();
+
+        fire('can-repeat', 'dblclick');
+        component.setEditValue(false);
+        blurEditor('can-repeat');
+
+        expect(lastRequest().canRepeat).toBeFalse();
+      });
+
+      it('patches the row from the PUT response and closes the editor', () => {
+        setup();
+
+        fire('title', 'dblclick');
+        component.setEditValue('新課程名稱');
+        blurEditor('title');
+
+        expect(component.editing()).toBeNull();
+        expect(cellsOf('editcell-title')[0]).toBe('新課程名稱');
+      });
+
+      it('does not call the API when the value is unchanged', () => {
+        setup();
+
+        fire('title', 'dblclick');
+        blurEditor('title');
+
+        expect(service.getById).not.toHaveBeenCalled();
+        expect(service.update).not.toHaveBeenCalled();
+        expect(component.editing()).toBeNull();
+      });
+
+      it('ignores a blur raised while the editor own overlay is open', () => {
+        // p-datepicker / p-select panels are appendTo="body", so reaching for the
+        // calendar blurs the input; committing there would close the editor.
+        setup();
+
+        fire('schedule-on', 'dblclick');
+        component.overlayOpen.set(true);
+        component.setEditValue(new Date(2016, 0, 1));
+        component.commitOnBlur();
+
+        expect(service.update).not.toHaveBeenCalled();
+        expect(component.editing()).not.toBeNull();
+
+        component.overlayOpen.set(false);
+        component.commitOnBlur();
+
+        expect(lastRequest().scheduleOn).toBe('2016-01-01');
+      });
+    });
+
+    describe('validation', () => {
+      /** Blur an editor whose value is invalid and return the message shown. */
+      function reject(testId: string, value: EditValue): string | null {
+        fire(testId, 'dblclick');
+        component.setEditValue(value);
+        component.commit();
+        fixture.detectChanges();
+        return errorText();
+      }
+
+      it('blocks a cleared required text field and stays in edit mode', () => {
+        setup();
+
+        expect(reject('title', '   ')).toBe('課程名稱不可空白。');
+        expect(service.update).not.toHaveBeenCalled();
+        expect(component.editing()?.field).toBe('title');
+        expect(editor('title')).not.toBeNull();
+      });
+
+      it('blocks a cleared required number, select and date', () => {
+        setup();
+
+        expect(reject('hour', null)).toBe('時數不可空白。');
+        component.cancelEdit();
+        expect(reject('publish-status', null)).toBe('上架狀態不可空白。');
+        component.cancelEdit();
+        expect(reject('schedule-on', null)).toBe('上架日期不可空白。');
+
+        expect(service.update).not.toHaveBeenCalled();
+      });
+
+      it('blocks a negative number in each numeric column', () => {
+        setup();
+
+        expect(reject('hour', -1)).toBe('時數不可為負數。');
+        component.cancelEdit();
+        expect(reject('list-price', -0.5)).toBe('定價不可為負數。');
+        component.cancelEdit();
+        expect(reject('learning-credit', -3)).toBe('點數不可為負數。');
+        component.cancelEdit();
+        expect(reject('display-order', -1)).toBe('顯示順序不可為負數。');
+
+        expect(service.update).not.toHaveBeenCalled();
+      });
+
+      it('accepts zero, which is not negative', () => {
+        setup();
+
+        fire('hour', 'dblclick');
+        component.setEditValue(0);
+        component.commit();
+
+        expect(lastRequest().hour).toBe(0);
+      });
+
+      it('blocks a non-numeric value', () => {
+        setup();
+
+        expect(reject('list-price', '免費')).toBe('定價必須是數字。');
+        expect(service.update).not.toHaveBeenCalled();
+      });
+
+      it('blocks an invalid date', () => {
+        setup();
+
+        expect(reject('schedule-on', new Date('nonsense'))).toBe('上架日期必須是有效日期。');
+        expect(service.update).not.toHaveBeenCalled();
+      });
+
+      it('blocks 上架日期 after 下架日期, from either end of the range', () => {
+        setup();
+
+        // The row holds 2015-11-10 .. 2021-11-01.
+        expect(reject('schedule-on', new Date(2022, 0, 1))).toBe('上架日期不可晚於下架日期。');
+        component.cancelEdit();
+        expect(reject('schedule-off', new Date(2015, 0, 1))).toBe('上架日期不可晚於下架日期。');
+
+        expect(service.update).not.toHaveBeenCalled();
+      });
+
+      it('accepts the two dates being equal', () => {
+        setup();
+
+        fire('schedule-off', 'dblclick');
+        component.setEditValue(new Date(2015, 10, 10));
+        component.commit();
+
+        expect(lastRequest().scheduleOff).toBe('2015-11-10');
+      });
+
+      it('clears the message once the value is corrected', () => {
+        setup();
+
+        expect(reject('title', '')).toBe('課程名稱不可空白。');
+
+        component.setEditValue('改好了');
+        component.commit();
+        fixture.detectChanges();
+
+        expect(errorText()).toBeNull();
+        expect(lastRequest().title).toBe('改好了');
+      });
+
+      it('applies the column length and range caps', () => {
+        const row = makeCourse();
+
+        expect(validateCell('title', 'a'.repeat(201), row)).toBe('課程名稱不可超過 200 個字。');
+        expect(validateCell('prodCourseId', 'a'.repeat(51), row)).toBe('科目代碼不可超過 50 個字。');
+        expect(validateCell('hour', 32768, row)).toBe('時數不可大於 32767。');
+        expect(validateCell('displayOrder', 10000, row)).toBe('顯示順序不可大於 9999。');
+        expect(validateCell('displayOrder', 1.5, row)).toBe('顯示順序必須是整數。');
+        // 點數 is decimal(9,1) — 387 live rows carry a fraction.
+        expect(validateCell('learningCredit', 12.5, row)).toBeNull();
+        // A checkbox has no invalid state.
+        expect(validateCell('canRepeat', false, row)).toBeNull();
+      });
+    });
+
+    describe('failed save', () => {
+      it('reverts the cell to its previous value and reports the error', () => {
+        setup();
+        service.update.and.returnValue(throwError(() => ({ status: 500 })));
+        const addSpy = spyOn(TestBed.inject(MessageService), 'add');
+
+        fire('title', 'dblclick');
+        component.setEditValue('不會存進去的名稱');
+        blurEditor('title');
+
+        expect(component.editing()).toBeNull();
+        expect(cellsOf('editcell-title')[0]).toBe('ISO 14064溫室氣體主導查證師／確證師訓練課程');
+        expect(addSpy.calls.mostRecent().args[0].severity).toBe('error');
+        expect(addSpy.calls.mostRecent().args[0].detail).toContain('已還原原值');
+      });
+
+      it('reverts when the preparatory read fails too', () => {
+        setup();
+        service.getById.and.returnValue(throwError(() => ({ status: 500 })));
+
+        fire('hour', 'dblclick');
+        component.setEditValue(99);
+        blurEditor('hour');
+
+        expect(service.update).not.toHaveBeenCalled();
+        expect(component.editing()).toBeNull();
+        expect(cellsOf('editcell-hour')[0]).toBe('12');
+      });
+
+      it('tells the user to reload when the row has since been deleted', () => {
+        setup();
+        service.update.and.returnValue(throwError(() => ({ status: 404 })));
+        const addSpy = spyOn(TestBed.inject(MessageService), 'add');
+
+        fire('hour', 'dblclick');
+        component.setEditValue(99);
+        blurEditor('hour');
+
+        expect(addSpy.calls.mostRecent().args[0].detail).toContain('請重新整理清單');
+      });
+    });
+  });
 });

@@ -16,6 +16,36 @@
   white-space: nowrap;
 }
 
+/* Inline cell editing — the hover affordance PrimeNG's own p-editable-column supplies. */
+.cms-inline-edit-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  color: var(--cms-muted);
+}
+
+.cms-cell--editable {
+  cursor: cell;
+}
+
+.cms-cell--editable:hover {
+  outline: 1px dashed var(--p-primary-color, #2563eb);
+  outline-offset: -1px;
+}
+
+.cms-inline-error {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--p-red-500, #ef4444);
+  white-space: normal;
+}
+
+:host ::ng-deep .cms-inline-editor,
+:host ::ng-deep .cms-inline-editor input {
+  width: 100%;
+  min-width: 0;
+}
+
 .cms-link {
   color: inherit;
   text-decoration: none;
