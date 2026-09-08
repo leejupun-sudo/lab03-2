@@ -10,8 +10,14 @@ import { of, throwError } from 'rxjs';
 import { Course } from '@core/models/course.model';
 import { CourseService } from '@core/services/course.service';
 import { LookupService } from '@core/services/lookup.service';
+import { QrCodeService } from '@core/services/qr-code.service';
 import { makeCourse } from '@core/services/course.service.spec';
 import { CourseDetail } from './course-detail';
+
+/** The component keeps its members protected; the download action is driven through this. */
+interface DetailInternals {
+  downloadQrCode(): Promise<void>;
+}
 
 const COURSE: Course = makeCourse({
   officialTitle: 'Oracle Database: PL/SQL Fundamentals',
@@ -25,6 +31,8 @@ const COURSE: Course = makeCourse({
 describe('CourseDetail', () => {
   let fixture: ComponentFixture<CourseDetail>;
   let service: jasmine.SpyObj<CourseService>;
+  // The real QR service (a browser canvas is all it needs), watched through spies.
+  let qrCodeService: QrCodeService;
 
   function setup(routeId: string, course: Course | null = COURSE): void {
     service = jasmine.createSpyObj<CourseService>('CourseService', ['getById']);
@@ -60,7 +68,17 @@ describe('CourseDetail', () => {
       ],
     });
 
+    qrCodeService = TestBed.inject(QrCodeService);
+    spyOn(qrCodeService, 'render').and.callThrough();
+    spyOn(qrCodeService, 'save');
+
     fixture = TestBed.createComponent(CourseDetail);
+    fixture.detectChanges();
+  }
+
+  /** Lets the QR render promise settle and re-renders the view. */
+  async function settle(): Promise<void> {
+    await fixture.whenStable();
     fixture.detectChanges();
   }
 
@@ -168,5 +186,127 @@ describe('CourseDetail', () => {
     setup('999', null);
 
     expect(textOf('detail-not-found')).toContain('查無此課程');
+  });
+
+  describe('QR code', () => {
+    function imageEl(): HTMLImageElement | null {
+      const el = fixture.debugElement.query(By.css('[data-testid="detail-qr-image"]'));
+      return (el?.nativeElement as HTMLImageElement | undefined) ?? null;
+    }
+
+    it('encodes the public course URL built from pkid and CourseId', async () => {
+      setup('35');
+      await settle();
+
+      expect(qrCodeService.render).toHaveBeenCalledWith(
+        'https://www.uuu.com.tw/Course/Show/35/PLF',
+        'PLF',
+      );
+    });
+
+    it('percent-encodes a CourseId carrying a space', async () => {
+      // 15 live CourseIds carry spaces, parentheses or Chinese — pkid 1125 is 「CCNA Cloud」.
+      setup('1125', { ...COURSE, pkid: 1125, courseId: 'CCNA Cloud' });
+      await settle();
+
+      expect(qrCodeService.render).toHaveBeenCalledWith(
+        'https://www.uuu.com.tw/Course/Show/1125/CCNA%20Cloud',
+        'CCNA Cloud',
+      );
+    });
+
+    it('shows the target URL as a link beside the code', async () => {
+      setup('35');
+      await settle();
+
+      const link = fixture.debugElement.query(By.css('[data-testid="detail-qr-url"]'))
+        .nativeElement as HTMLAnchorElement;
+      expect(link.getAttribute('href')).toBe('https://www.uuu.com.tw/Course/Show/35/PLF');
+      expect(textOf('detail-qr-url')).toBe('https://www.uuu.com.tw/Course/Show/35/PLF');
+    });
+
+    it('shows the CourseId as the title of the code', async () => {
+      setup('35');
+      await settle();
+
+      expect(textOf('detail-qr-title')).toBe('PLF');
+      expect(imageEl()?.alt).toBe('課程 PLF 的 QR Code');
+    });
+
+    it('renders the composed code as a PNG image inside 基本資料', async () => {
+      setup('35');
+      await settle();
+
+      const image = imageEl();
+      expect(image).not.toBeNull();
+      expect(image!.src.startsWith('data:image/png;base64,')).toBeTrue();
+      // The block lives in the first card, 基本資料 — not in a card of its own.
+      const card = image!.closest('.cms-card');
+      expect(card?.querySelector('.cms-card__title')?.textContent?.trim()).toBe('基本資料');
+    });
+
+    it('shows a placeholder and no image until the code has rendered', () => {
+      setup('35');
+
+      expect(imageEl()).toBeNull();
+      expect(textOf('detail-qr-pending')).toContain('QR Code');
+    });
+
+    it('says so, and leaves the rest of the page intact, when rendering fails', async () => {
+      setup('35');
+      (qrCodeService.render as jasmine.Spy).and.returnValue(
+        Promise.reject(new Error('canvas unavailable')),
+      );
+      // Re-create the component so the failing spy is the one it calls.
+      fixture = TestBed.createComponent(CourseDetail);
+      fixture.detectChanges();
+      await settle();
+
+      expect(imageEl()).toBeNull();
+      expect(textOf('detail-qr-pending')).toBe('QR Code 產生失敗');
+      expect(textOf('detail-course-id')).toBe('PLF');
+    });
+
+    it('produces a PNG image named after the CourseId when the download runs', async () => {
+      setup('35');
+      await settle();
+
+      await (fixture.componentInstance as unknown as DetailInternals).downloadQrCode();
+
+      expect(qrCodeService.save).toHaveBeenCalledTimes(1);
+      const [blob, filename] = (qrCodeService.save as jasmine.Spy).calls.mostRecent().args as [
+        Blob,
+        string,
+      ];
+      expect(filename).toBe('PLF.png');
+      expect(blob.type).toBe('image/png');
+      expect(blob.size).toBeGreaterThan(0);
+
+      const header = new Uint8Array(await blob.arrayBuffer()).subarray(0, 8);
+      expect(Array.from(header)).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    });
+
+    it('enables the download button only once the code exists', async () => {
+      setup('35');
+
+      const button = () =>
+        fixture.debugElement.query(By.css('[data-testid="detail-qr-download"] button'))
+          .nativeElement as HTMLButtonElement;
+      expect(button().disabled).toBeTrue();
+
+      await settle();
+
+      expect(button().disabled).toBeFalse();
+    });
+
+    it('downloads nothing when there is no course', async () => {
+      setup('999', null);
+      await settle();
+
+      await (fixture.componentInstance as unknown as DetailInternals).downloadQrCode();
+
+      expect(qrCodeService.render).not.toHaveBeenCalled();
+      expect(qrCodeService.save).not.toHaveBeenCalled();
+    });
   });
 });

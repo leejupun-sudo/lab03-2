@@ -6,6 +6,8 @@ import { catchError } from 'rxjs/operators';
 import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 
+import { environment } from '@env';
+
 import {
   CertificationLookup,
   Course,
@@ -14,6 +16,7 @@ import {
 } from '@core/models/course.model';
 import { CourseService } from '@core/services/course.service';
 import { LookupService } from '@core/services/lookup.service';
+import { QrCodeService } from '@core/services/qr-code.service';
 
 @Component({
   selector: 'app-course-detail',
@@ -27,9 +30,16 @@ export class CourseDetail implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly messageService = inject(MessageService);
+  private readonly qrCodeService = inject(QrCodeService);
 
   protected readonly course = signal<Course | null>(null);
   protected readonly loading = signal(true);
+
+  /** Data URL of the composed QR image (matrix + CourseId caption); null until it renders. */
+  protected readonly qrImage = signal<string | null>(null);
+  /** Set when rendering threw, so the placeholder stops promising a code that is not coming. */
+  protected readonly qrFailed = signal(false);
+  private qrCanvas: HTMLCanvasElement | null = null;
 
   private readonly certifications = signal<CertificationLookup[]>([]);
   private readonly jobCategories = signal<JobCategoryLookup[]>([]);
@@ -42,6 +52,19 @@ export class CourseDetail implements OnInit {
   protected readonly jobCategoryLabels = computed(() =>
     resolveLabels(this.course()?.jobCategoryPkids ?? [], this.jobCategories()),
   );
+
+  /**
+   * Public course page the QR code points at. CourseId is free text — live values carry
+   * spaces, parentheses and Chinese — so the segment is percent-encoded.
+   */
+  protected readonly qrTargetUrl = computed(() => {
+    const item = this.course();
+    if (!item) {
+      return null;
+    }
+    const courseId = encodeURIComponent(item.courseId);
+    return `${environment.publicSiteBaseUrl}/Course/Show/${item.pkid}/${courseId}`;
+  });
 
   ngOnInit(): void {
     const pkid = Number(this.route.snapshot.paramMap.get('id'));
@@ -65,6 +88,7 @@ export class CourseDetail implements OnInit {
         this.jobCategories.set(jobCategories);
         this.course.set(course);
         this.loading.set(false);
+        void this.renderQrCode(course);
       },
       error: () => {
         this.loading.set(false);
@@ -85,6 +109,48 @@ export class CourseDetail implements OnInit {
 
   protected goBack(): void {
     void this.router.navigate(['/courses']);
+  }
+
+  /** Composes the QR image once the course is known; a failure costs only the QR row. */
+  private async renderQrCode(course: Course): Promise<void> {
+    const url = this.qrTargetUrl();
+    if (!url) {
+      return;
+    }
+
+    try {
+      this.qrCanvas = await this.qrCodeService.render(url, course.courseId);
+      this.qrImage.set(this.qrCanvas.toDataURL('image/png'));
+    } catch {
+      this.qrCanvas = null;
+      this.qrImage.set(null);
+      this.qrFailed.set(true);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'QR Code 產生失敗',
+        detail: `無法為 ${course.courseId} 產生 QR Code。`,
+      });
+    }
+  }
+
+  /** Saves the composed canvas as `{CourseId}.png`. */
+  protected async downloadQrCode(): Promise<void> {
+    const course = this.course();
+    const canvas = this.qrCanvas;
+    if (!course || !canvas) {
+      return;
+    }
+
+    try {
+      const blob = await this.qrCodeService.toPngBlob(canvas);
+      this.qrCodeService.save(blob, `${course.courseId}.png`);
+    } catch {
+      this.messageService.add({
+        severity: 'error',
+        summary: '下載失敗',
+        detail: '無法產生 QR Code 圖檔。',
+      });
+    }
   }
 }
 

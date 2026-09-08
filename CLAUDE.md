@@ -98,6 +98,8 @@ to "verify" an endpoint without asking — the xUnit suite covers writes with in
 - PrimeNG: overlays need `appendTo="body"`; `[filter]` past ~10 options, `[virtualScroll]`
   past ~100; tri-state filters use `p-select`, not a checkbox. Autocomplete endpoints (capped
   server search) must not be bound to a `p-select`.
+- **A CommonJS runtime dependency** (the first is `qrcode`) must be listed in
+  `angular.json` under `allowedCommonJsDependencies`, or every build warns.
 - Dates: `date` columns travel as `yyyy-MM-dd`; convert with `core/utils/date.util.ts`
   (local components, never `toISOString()`).
 - Shared primitives (`.cms-card`, `.cms-page-header`, `.cms-field`, `.cms-detail-grid`) live

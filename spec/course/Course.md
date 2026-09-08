@@ -403,8 +403,9 @@ suffix is context, not disambiguation.
   `DisplayOrder`) and both junction sets, in one transaction.
 - Kept from `sample1` because the data supports it: 124 duplicate `Title` groups and
   triplets like `.NET Framework核心程式設計` ×3 are what cloning-then-tweaking produces.
-  Nothing else from `sample1`'s extras (QR code, print, sub-panels, ClassSection button)
-  is built — the tables behind them do not exist.
+  Of `sample1`'s other extras only the **QR code** is built (see *Detail — QR code*
+  below); print, sub-panels and the ClassSection button are not — the tables behind them
+  do not exist.
 
 ### Status codes
 
@@ -680,9 +681,33 @@ Columns, in the order supplied with the invocation:
 
 ### Detail component
 
-Three cards: 基本資料 (identity, FK labels as links, dates, numbers, 允許重聽), 課程內容
-(the eight text blocks, `pre-wrap`, `—` when null), 關聯 (認證 chips, 職務類別 chips, then
-the four usage counts with the 尚未被任何… note when all are zero).
+Three cards: 基本資料 (identity, FK labels as links, dates, numbers, 允許重聽, then the QR
+code below), 課程內容 (the eight text blocks, `pre-wrap`, `—` when null), 關聯 (認證 chips,
+職務類別 chips, then the four usage counts with the 尚未被任何… note when all are zero).
+
+#### Detail — QR code
+
+The last row of 基本資料 is a `QR Code` row holding a `<figure>`: the code, the CourseId as
+its caption, the target URL as a link, and a 下載 QR Code button.
+
+- **Target URL** `{environment.publicSiteBaseUrl}/Course/Show/{pkid}/{CourseId}` —
+  `https://www.uuu.com.tw` in both environment files, so a different public host is a config
+  change, not a code change. The CourseId segment is `encodeURIComponent`'d: 15 live values
+  carry spaces, parentheses or Chinese (`CCNA Cloud`, `DO180(NO)`,
+  `Python-程式設計開發必修`), and a raw space would break the link.
+- **One canvas is both the preview and the download.** `QrCodeService.render()` draws the
+  512 px matrix (`qrcode`, EC level M, 2-module quiet zone) then composites it onto a
+  512 × 584 canvas with the CourseId centred in a 72 px caption strip, so the saved PNG
+  identifies itself away from the page. The page shows that canvas as a `toDataURL` image
+  at 180 px; 下載 QR Code re-encodes it with `toBlob` and saves `{CourseId}.png`.
+- File names are sanitised (`safeFileName`) — CourseId is free text and `/` or `:` in one
+  would otherwise produce a name the OS refuses.
+- Rendering is async: until it resolves the figure shows a QR Code 產生中… placeholder and
+  the download button is disabled. A failure swaps that text to QR Code 產生失敗, raises a
+  toast, and costs nothing but the QR row — the rest of the page renders as usual.
+- `qrcode` is the app's first non-Angular/PrimeNG runtime dependency; it is CommonJS, so
+  `angular.json` lists it under `allowedCommonJsDependencies` to keep the build warning-free.
+  It rides in the lazy `course-detail` chunk (~20 kB), not the initial bundle.
 
 ### Form component
 
@@ -770,7 +795,13 @@ Existing group 課程管理 Course, **first** entry (the master entity leads its
   incoming `partnerPkid` param overrides saved filter, delete + 409 wording, copy dialog
   calls the service and navigates.
 - `course-detail.spec.ts` — fields, links, chips resolved from lookups, null renders `—`,
-  unused note only when all four counts are zero (Recomm-only is *not* unused).
+  unused note only when all four counts are zero (Recomm-only is *not* unused), and the QR
+  code: the encoded URL (plain and space-bearing CourseId), the CourseId caption and alt
+  text, the image inside 基本資料, the placeholder/disabled button before it renders, and a
+  download that hands `save()` a real PNG blob named `PLF.png`.
+- `qr-code.service.spec.ts` — canvas geometry, dark modules drawn, caption pixels present
+  only when a caption is given, white quiet zone, PNG magic bytes, the download link and
+  `safeFileName`.
 - `course-form.spec.ts` — add title / no pkid; `CourseId` enabled in add, disabled in
   edit; +10y auto-default in add only; `scheduleOff < scheduleOn` blocks save; blank
   textareas → `null`; junction ids in the request; 409 message; cancel targets.
@@ -795,6 +826,10 @@ Existing group 課程管理 Course, **first** entry (the master entity leads its
 | NG | `core/models/course.model.ts`, `core/services/course.service.ts` (+spec) | new |
 | NG | `core/utils/date.util.ts` (+spec) | new |
 | NG | `core/services/lookup.service.ts` (+spec) | extend |
+| NG | `core/services/qr-code.service.ts` (+spec) | new |
+| NG | `environments/environment.ts`, `environment.development.ts` | add `publicSiteBaseUrl` |
+| NG | `angular.json` | `allowedCommonJsDependencies: ["qrcode"]` |
+| NG | `package.json` | add `qrcode`, `@types/qrcode` |
 | NG | `features/courses/course-list/*`, `course-detail/*`, `course-form/*` (+specs) | new |
 | NG | `app.routes.ts`, `app.ts`, `app.spec.ts` | extend |
 | Docs | `CLAUDE.md` | Course feature section + the hidden-UNIQUE-index and CASCADE traps |

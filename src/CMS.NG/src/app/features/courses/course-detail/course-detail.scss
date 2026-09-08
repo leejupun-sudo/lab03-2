@@ -32,3 +32,39 @@
   border: 1px solid var(--cms-card-border);
   font-size: 0.85rem;
 }
+
+/* QR code block inside 基本資料 — the image already carries the CourseId caption,
+   the figcaption repeats it for screen readers and for a glance without zooming. */
+.course-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.course-qr__image,
+.course-qr__placeholder {
+  width: 180px;
+  height: 180px;
+  border: 1px solid var(--cms-card-border);
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.course-qr__placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+.course-qr__caption {
+  font-weight: 600;
+}
+
+.course-qr__url {
+  font-size: 0.85rem;
+  word-break: break-all;
+}

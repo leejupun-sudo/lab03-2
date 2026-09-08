@@ -111,6 +111,49 @@
 
         <dt class="cms-detail-grid__label">允許重聽</dt>
         <dd class="cms-detail-grid__value" data-testid="detail-can-repeat">{{ item.canRepeat ? '是' : '否' }}</dd>
+
+        <dt class="cms-detail-grid__label">QR Code</dt>
+        <dd class="cms-detail-grid__value">
+          <figure class="course-qr" data-testid="detail-qr">
+            @if (qrImage(); as image) {
+              <img
+                class="course-qr__image"
+                [src]="image"
+                [alt]="'課程 ' + item.courseId + ' 的 QR Code'"
+                data-testid="detail-qr-image"
+              />
+            } @else {
+              <div class="course-qr__placeholder cms-empty" data-testid="detail-qr-pending">
+                {{ qrFailed() ? 'QR Code 產生失敗' : 'QR Code 產生中…' }}
+              </div>
+            }
+
+            <figcaption class="course-qr__caption" data-testid="detail-qr-title">
+              {{ item.courseId }}
+            </figcaption>
+
+            @if (qrTargetUrl(); as targetUrl) {
+              <a
+                class="cms-link course-qr__url"
+                [href]="targetUrl"
+                target="_blank"
+                rel="noopener"
+                data-testid="detail-qr-url"
+                >{{ targetUrl }}</a
+              >
+            }
+
+            <p-button
+              label="下載 QR Code"
+              icon="pi pi-download"
+              severity="secondary"
+              [outlined]="true"
+              [disabled]="!qrImage()"
+              (onClick)="downloadQrCode()"
+              data-testid="detail-qr-download"
+            />
+          </figure>
+        </dd>
       </dl>
     </div>
   </div>

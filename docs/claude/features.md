@@ -141,8 +141,16 @@ Spec: `spec/course/Course.md` — the longest one, because this table has every 
   `[innerHTML]`. `OtherInfo` is null on every row but stays in the form. Blank optional text
   is stored as `NULL`.
 - `POST /api/courses/{id}/copy` clones every column and both junction sets under a new
-  `CourseId` in one transaction. Nothing else from `sample1`'s extras (QR, print,
-  sub-panels, `ClassSection`) exists — `ClassSection` is not in the DDL at all.
+  `CourseId` in one transaction. Of `sample1`'s other extras only the QR code exists;
+  print, sub-panels and `ClassSection` do not — `ClassSection` is not in the DDL at all.
+- **The 基本資料 QR code is a composited canvas, not a bare matrix.** `QrCodeService`
+  (`core/services/qr-code.service.ts`, wrapping the `qrcode` package) draws the matrix and
+  then the CourseId as a caption strip beneath it; the page displays that canvas and 下載
+  saves the same one as `{CourseId}.png`, so preview and download can never drift. It
+  encodes `{environment.publicSiteBaseUrl}/Course/Show/{pkid}/{CourseId}` with the CourseId
+  segment **percent-encoded** — 15 live CourseIds carry spaces, parentheses or Chinese, and
+  those same characters are why the file name is sanitised. `qrcode` is CommonJS and is
+  listed in `angular.json` under `allowedCommonJsDependencies`.
 - Lookups: `/api/lookups/certifications` (39, `nchar` title **RTRIM'd**, label
   `Title (PartnerName)`), `/api/lookups/job-categories` (18, pkid order) and
   `/api/lookups/courses` (1084 — consumers need `[virtualScroll]`).
