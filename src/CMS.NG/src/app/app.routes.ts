@@ -59,6 +59,30 @@ export const routes: Routes = [
     title: '發布狀態明細',
   },
   {
+    path: 'courses',
+    loadComponent: () =>
+      import('@features/courses/course-list/course-list').then((m) => m.CourseList),
+    title: '課程 Course',
+  },
+  {
+    path: 'courses/new',
+    loadComponent: () =>
+      import('@features/courses/course-form/course-form').then((m) => m.CourseForm),
+    title: '新增課程',
+  },
+  {
+    path: 'courses/:id/edit',
+    loadComponent: () =>
+      import('@features/courses/course-form/course-form').then((m) => m.CourseForm),
+    title: '編輯課程',
+  },
+  {
+    path: 'courses/:id',
+    loadComponent: () =>
+      import('@features/courses/course-detail/course-detail').then((m) => m.CourseDetail),
+    title: '課程明細',
+  },
+  {
     path: 'partners',
     loadComponent: () =>
       import('@features/partners/partner-list/partner-list').then((m) => m.PartnerList),

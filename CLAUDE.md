@@ -12,7 +12,7 @@ is the source of truth for how a table becomes code. Read both before adding a f
 | ------------------- | --------------------------------------------------------------- |
 | `database/*.sql`    | Table DDL — `auth.sql`, `admin.sql`, `course.sql`, `promotion.sql` |
 | `spec/`             | Codegen convention, feature-spec template, two worked spec samples, UI mockups |
-| `spec/{sub-system}/`| Real per-table build specs — `admin/PublishStatus.md`, `course/CourseGroup.md` |
+| `spec/{sub-system}/`| Real per-table build specs — `admin/PublishStatus.md`, `course/CourseGroup.md`, `course/Partner.md`, `course/Course.md` |
 | `src/CMS.API`       | .NET 9 Web API, Dapper (no EF), port 5000                        |
 | `src/CMS.API.Tests` | xUnit endpoint tests                                             |
 | `src/CMS.NG`        | Angular 20 standalone + PrimeNG 20, port 4200                     |
@@ -77,16 +77,28 @@ writes with an in-memory repository instead.
 - Alias FK columns in SELECT (`c.Partner_pkid AS PartnerPkid`) so Dapper maps them.
 - Duplicate natural keys return `409` with a `ProblemDetails` body, not `500`.
 
-### Four things the schema will not tell you — check the live DB first
+### Things the schema will not tell you — check the live DB first
 
 Read-only probes against `.\SQLEXPRESS` are cheap and have caught a real bug in every
 feature so far. Run them before writing the repository, not after.
 
-- **A table that is an FK target needs a delete guard.** No table here declares
+- **A table that is an FK target needs a delete guard.** Almost no FK here declares
   `ON DELETE`, so deleting a referenced row raises an FK violation — a `500`, which the
   rule above forbids. Carry usage-count subqueries in every SELECT and gate `DELETE`
-  behind an `IsInUseAsync`, returning `409`. `PublishStatus`, `CourseGroup` and `Partner`
-  all do this; copy any of them (`Partner` is the five-count example).
+  behind an `IsInUseAsync`, returning `409`. `PublishStatus`, `CourseGroup`, `Partner` and
+  `Course` all do this; copy any of them (`Partner` is the five-count example). Check
+  `delete_referential_action_desc` in `sys.foreign_keys` first: the two `Course` junctions
+  **do** cascade and must *not* be counted, or nothing with a certification could ever be
+  deleted.
+- **A `UNIQUE` index can exist that the DDL never declares.** `course.sql` shows only
+  `PK_Course`, but the live table carries `IX_Course_UniqueCourseId`. A duplicate
+  `CourseId` is therefore a *database* violation, not just an application rule — without a
+  `CourseIdExistsAsync` the INSERT 500s. Query `sys.indexes WHERE is_unique = 1` for the
+  table before deciding which columns get a `*ExistsAsync`.
+- **An outbound FK can cascade the wrong way.** `FK_Course_CourseGroup` is
+  `ON DELETE CASCADE`: deleting a `CourseGroup` row at the SQL level deletes every course
+  in it. Only the `CourseGroup` feature's application guard stands between a stray
+  `DELETE` and 1084 courses. Never "simplify" that guard away.
 - **Do not assume a "name" column is unique.** `CourseGroup.Description` has no `UNIQUE`
   constraint and the live table holds duplicates (215 rows, 213 distinct). Adding the
   usual duplicate check there would contradict the schema *and* make the existing twin
@@ -103,10 +115,13 @@ feature so far. Run them before writing the repository, not after.
   it, and deleting a partner referenced only by `Seminar` succeeds, orphaning the rows
   silently. That is not hypothetical: `Partner` 122 is exactly such a row. Enumerate
   references with `sys.foreign_keys`, then also grep the DDL for `{Table}_pkid` columns the
-  constraint list does not cover.
+  constraint list does not cover. **The reference may not even be by pkid:** `CourseRecomm`
+  points at courses through the `CourseId` *string* (3118 rows, 895 already orphaned), so
+  grep for the natural-key column name as well.
 
 An FK-target PK is also **immutable** — never write it in `UPDATE`, and disable the
-control in the edit form. Same hazard as `AppRole.RoleId`.
+control in the edit form. Same hazard as `AppRole.RoleId`, and the same reason
+`Course.CourseId` is frozen after creation.
 
 The distinct-vs-total probe cuts both ways: on `Partner` it rules a duplicate check *out*
 for `Name` (66 rows / 64 distinct) and *in* for `AppKey` (66/66), in the same table.
@@ -129,8 +144,8 @@ binding, DataAnnotations validation and JSON casing without a database. `Program
 with `public partial class Program;` to make that possible — keep it.
 
 One factory + one fake per feature (`AppRoleApiFactory`, `PublishStatusApiFactory`,
-`CourseGroupApiFactory`, `PartnerApiFactory`, plus `LookupApiFactory` for
-`LookupsController`). **Construct a
+`CourseGroupApiFactory`, `PartnerApiFactory`, `CourseApiFactory`, plus `LookupApiFactory`
+for `LookupsController`). **Construct a
 fresh factory per test** — the fakes hold mutable state. Seed the fake with data that
 actually exercises the rules: a referenced row so the delete guard has something to block,
 and duplicate names where duplicates are legal.
@@ -220,7 +235,7 @@ Spec: `spec/course/CourseGroup.md`.
 
 ## Feature: 合作廠商 Partner (implemented)
 
-Sidebar **課程管理 Course → 合作廠商 Partner** (above CourseGroup); routes under `/partners`.
+Sidebar **課程管理 Course → 合作廠商 Partner** (between Course and CourseGroup); routes under `/partners`.
 Spec: `spec/course/Partner.md`.
 
 - `pkid smallint IDENTITY`, immutable — the most-referenced FK target in the schema.
@@ -242,8 +257,59 @@ Spec: `spec/course/Partner.md`.
   `spec/sample1.spec.md`; reconcile when the Course feature is built. 66 options needs
   `[filter]` but **not** `[virtualScroll]`.
 - The list page shows one summed **使用中** column; the detail page breaks the five counts
-  out separately. Link buttons are deferred — `/courses`, `/certifications`,
-  `/partner-course-groups`, `/promotion2s` and `/seminars` are all dead routes.
+  out separately. Link buttons are deferred — `/certifications`, `/partner-course-groups`,
+  `/promotion2s` and `/seminars` are dead routes. `/courses?partnerPkid={pkid}` is now live
+  and honoured by the Course list, but the 查看課程 button on the Partner detail page has
+  not been added yet.
+
+## Feature: 課程 Course (implemented)
+
+Sidebar **課程管理 Course → 課程 Course** (first in the group); routes under `/courses`.
+Spec: `spec/course/Course.md` — the longest one, because this table has every trap.
+
+- `pkid int IDENTITY`. **`CourseId` is unique by a live `UNIQUE` index the DDL omits**
+  (409 on create, case-insensitive like the column's collation) **and immutable after
+  creation** — `CourseRecomm` references courses by that string with no FK. `UPDATE` never
+  writes it; the edit form disables it; the update path has no duplicate check because the
+  value cannot change. `Title` (124 duplicate groups), `ProdCourseId` (77) and
+  `FriendlyUrl` (125) get no duplicate check.
+- **Delete guard has four counts, two enforced-FK children excluded.** `CourseFAQ`,
+  `CourseRelatedLink` and `HotCourse` are `NO_ACTION` and block; `CourseRecomm` has no FK
+  and blocks anyway (Seminar precedent); `CourseInCertification` and `CourseJobCategories`
+  **cascade** and are deliberately *not* counted. With `CourseRecomm` included only ~58 of
+  1084 courses are deletable — that is the data, recorded in the spec as the thing to
+  revisit once a `CourseRecomm` feature exists.
+- **The two junctions are real** (composite PK on the FK pair, no surrogate, nothing FKs to
+  them) and sync delete-then-reinsert inside the same transaction as the parent write — the
+  first transaction in the codebase. `GetByIdAsync` alone returns the id lists; the list
+  endpoint does not.
+- **FK labels ride on the row.** `PartnerName`, `CourseGroupDescription` (LEFT JOIN) and
+  `PublishStatusDescription` are flat aliased columns, not multi-mapped nav objects, so the
+  list renders with no lookup calls. Lookups load only for the filter drawer and form.
+- Default sort `CourseId ASC` — unique, so a single key. `DisplayOrder` is a per-partner
+  ordinal (65 distinct over 1084 rows) and was rejected as the default.
+- **Dates.** `DateOnly` on the wire as `yyyy-MM-dd`; `core/utils/date.util.ts` converts with
+  local components (never `toISOString()`). The add form defaults 下架日期 to 上架日期 + 10y
+  — the two newest live rows follow that rule — but only in add mode, so editing 上架日期
+  never clobbers a set 下架日期. `ScheduleOff >= ScheduleOn` is enforced **in the form
+  only**: no `CHECK`, and pkid 1980 violates it live, so the API accepts what SQL accepts.
+- `Outline` holds HTML in 112 rows and is rendered as text (`white-space: pre-wrap`),
+  never `[innerHTML]`. `OtherInfo` is null on every row but stays in the form. Blank
+  optional text is stored as `NULL`.
+- `POST /api/courses/{id}/copy` clones every column and both junction sets under a new
+  `CourseId` in one transaction. Kept from `sample1` because the triplicate titles in the
+  data are what clone-then-tweak produces. Nothing else from `sample1`'s extras (QR, print,
+  sub-panels, `ClassSection`) exists — `ClassSection` is not in the DDL at all.
+- New lookups: `/api/lookups/certifications` (39, `nchar` title **RTRIM'd**, label
+  `Title (PartnerName)`), `/api/lookups/job-categories` (18, pkid order) and
+  `/api/lookups/courses` (1084 — consumers need `[virtualScroll]`).
+- The list honours incoming `partnerPkid`, `courseGroupPkid` and `publishStatusPkid`
+  query params over the saved filter, per the three parent specs. The four child routes it
+  would link *to* (`/course-faqs`, `/course-related-links`, `/hot-courses`,
+  `/course-recomms`) are still dead, so counts render as plain numbers.
+- Column labels came with the `/crud` invocation and override `sample1`: 簡介代碼
+  (CourseId), 科目代碼 (ProdCourseId), 原廠 (Partner), 上架狀態 (PublishStatus), 點數
+  (LearningCredit), 允許重聽 (CanRepeat).
 
 ## Gaps between the `/crud` skill and this codebase
 
@@ -256,22 +322,25 @@ say so in the report.
   implemented feature uses either. Building that infrastructure is separate work; until
   then, follow the AppRole shape and note the omission.
 - **Primary-Foreign link buttons** need the child feature to exist first. `PublishStatus`,
-  `CourseGroup` and `Partner` all ship usage *counts* as plain numbers because `/courses`,
-  `/certifications`, `/promotion2s`, `/partner-course-groups` and `/seminars` are dead
-  routes. The specs record the routes and query-param names as the contract to build
-  against.
+  `CourseGroup`, `Partner` and `Course` all ship usage *counts* as plain numbers because
+  `/certifications`, `/promotion2s`, `/partner-course-groups`, `/seminars`, `/course-faqs`,
+  `/course-related-links`, `/hot-courses` and `/course-recomms` are dead routes. The specs
+  record the routes and query-param names as the contract to build against. `/courses` is
+  now live and accepts `partnerPkid` / `courseGroupPkid` / `publishStatusPkid`, so the
+  查看課程 buttons on those three detail pages are unblocked but not yet built.
 - **The junction heuristic can be wrong** — see above.
 
 ## Adding a feature
 
 1. Read the DDL, then **probe the live DB** for row counts, distinct-vs-total on any
-   candidate natural key, and which tables actually reference this one. See
-   *Three things the schema will not tell you*.
+   candidate natural key, unique indexes, which tables actually reference this one, and
+   the `ON DELETE` action of every FK in both directions. See *Things the schema will not
+   tell you*.
 2. Write `spec/{sub-system}/{Table}.md` from `spec/feature-spec.template.md`.
    `spec/sample1.spec.md` (Course, FK+N-N heavy) and `spec/sample2.spec.md` (SkillTrain,
-   simpler) show the depth expected; `spec/admin/PublishStatus.md` and
-   `spec/course/CourseGroup.md` are real worked examples. Record every judgment call and
-   its reason — that is what the spec is for.
+   simpler) show the depth expected; `spec/admin/PublishStatus.md`,
+   `spec/course/CourseGroup.md` and `spec/course/Course.md` are real worked examples.
+   Record every judgment call and its reason — that is what the spec is for.
 3. Backend: models, `I{Table}Repository` + implementation, controller, then **register
    the repository in `Program.cs`** — a missing registration only fails at request time.
    Add a `GET /api/lookups/{plural}` if anything FKs to this table.

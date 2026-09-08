@@ -54,7 +54,13 @@ describe('App', () => {
     const hrefs = fixture.debugElement
       .queryAll(By.css('.cms-nav-item'))
       .map((el) => (el.nativeElement as HTMLAnchorElement).getAttribute('href'));
-    expect(hrefs).toEqual(['/app-roles', '/publish-statuses', '/partners', '/course-groups']);
+    expect(hrefs).toEqual([
+      '/app-roles',
+      '/publish-statuses',
+      '/courses',
+      '/partners',
+      '/course-groups',
+    ]);
   });
 
   it('renders the 課程管理 Course group with the 課程群組 CourseGroup entry', () => {
@@ -114,5 +120,20 @@ describe('App', () => {
     fixture.detectChanges();
 
     expect(fixture.debugElement.query(By.css('.cms-shell--collapsed'))).toBeTruthy();
+  });
+
+  it('renders the 課程 Course entry first in the 課程管理 Course group, linked to /courses', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('課程 Course');
+
+    const hrefs = fixture.debugElement
+      .queryAll(By.css('.cms-nav-item'))
+      .map((el) => (el.nativeElement as HTMLAnchorElement).getAttribute('href'));
+
+    expect(hrefs.indexOf('/courses')).toBeGreaterThan(-1);
+    expect(hrefs.indexOf('/courses')).toBeLessThan(hrefs.indexOf('/partners'));
   });
 });

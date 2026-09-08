@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '@env';
 import { AppUserLookup } from '@core/models/app-user.model';
+import { CertificationLookup, CourseLookup, JobCategoryLookup } from '@core/models/course.model';
 import { CourseGroupLookup } from '@core/models/course-group.model';
 import { PartnerLookup } from '@core/models/partner.model';
 import { PublishStatusLookup } from '@core/models/publish-status.model';
@@ -15,6 +16,7 @@ export class LookupService {
   getAppUsers(): Observable<AppUserLookup[]> {
     return this.http.get<AppUserLookup[]>(`${this.baseUrl}/app-users`);
   }
+
 
   getPublishStatuses(): Observable<PublishStatusLookup[]> {
     return this.http.get<PublishStatusLookup[]>(`${this.baseUrl}/publish-statuses`);
@@ -35,5 +37,26 @@ export class LookupService {
    */
   getPartners(): Observable<PartnerLookup[]> {
     return this.http.get<PartnerLookup[]>(`${this.baseUrl}/partners`);
+  }
+
+  /**
+   * 認證下拉選項. 資料庫約有 39 筆 — 消費端請設定 `[filter]="true"`.
+   * `label` 已含原廠名稱 (`FCP-PCS (Fortinet資安專家認證課程)`), 讓純代碼的認證名稱有脈絡.
+   */
+  getCertifications(): Observable<CertificationLookup[]> {
+    return this.http.get<CertificationLookup[]>(`${this.baseUrl}/certifications`);
+  }
+
+  /** 職務類別下拉選項. 資料庫約有 18 筆, 依 pkid 排序 — 消費端請設定 `[filter]="true"`. */
+  getJobCategories(): Observable<JobCategoryLookup[]> {
+    return this.http.get<JobCategoryLookup[]>(`${this.baseUrl}/job-categories`);
+  }
+
+  /**
+   * 課程下拉選項. 資料庫約有 1084 筆 — 消費端請設定
+   * `[filter]="true"` 與 `[virtualScroll]="true" [virtualScrollItemSize]="43"`.
+   */
+  getCourses(): Observable<CourseLookup[]> {
+    return this.http.get<CourseLookup[]>(`${this.baseUrl}/courses`);
   }
 }

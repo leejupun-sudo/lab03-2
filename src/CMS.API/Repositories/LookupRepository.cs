@@ -65,4 +65,48 @@ public class LookupRepository : ILookupRepository
         return await connection.QueryAsync<PartnerLookup>(
             new CommandDefinition(sql, cancellationToken: cancellationToken));
     }
+
+    public async Task<IEnumerable<CertificationLookup>> GetCertificationsAsync(CancellationToken cancellationToken = default)
+    {
+        // Title is nchar(100) — RTRIM or every label carries trailing padding.
+        // Ordered by partner (same keys as the partner lookup) then title, per sample1.
+        const string sql = """
+            SELECT c.pkid AS Pkid, RTRIM(c.Title) AS Title, p.Name AS PartnerName
+            FROM Certification c
+            JOIN Partner p ON p.pkid = c.Partner_pkid
+            ORDER BY p.DisplayOrder ASC, p.Name ASC, p.pkid ASC, c.Title ASC
+            """;
+
+        using var connection = await _connectionFactory.CreateOpenConnectionAsync(cancellationToken);
+        return await connection.QueryAsync<CertificationLookup>(
+            new CommandDefinition(sql, cancellationToken: cancellationToken));
+    }
+
+    public async Task<IEnumerable<JobCategoryLookup>> GetJobCategoriesAsync(CancellationToken cancellationToken = default)
+    {
+        // 18 rows, no DisplayOrder column — pkid order is the house order.
+        const string sql = """
+            SELECT j.pkid AS Pkid, j.Description
+            FROM JobCategory j
+            ORDER BY j.pkid ASC
+            """;
+
+        using var connection = await _connectionFactory.CreateOpenConnectionAsync(cancellationToken);
+        return await connection.QueryAsync<JobCategoryLookup>(
+            new CommandDefinition(sql, cancellationToken: cancellationToken));
+    }
+
+    public async Task<IEnumerable<CourseLookup>> GetCoursesAsync(CancellationToken cancellationToken = default)
+    {
+        // ~1084 rows — far past the virtual-scroll threshold; CourseId is unique so it orders alone.
+        const string sql = """
+            SELECT c.pkid AS Pkid, c.CourseId, c.Title
+            FROM Course c
+            ORDER BY c.CourseId ASC
+            """;
+
+        using var connection = await _connectionFactory.CreateOpenConnectionAsync(cancellationToken);
+        return await connection.QueryAsync<CourseLookup>(
+            new CommandDefinition(sql, cancellationToken: cancellationToken));
+    }
 }

@@ -1,0 +1,58 @@
+.cms-table-scroll {
+  overflow-x: auto;
+}
+
+.cms-cell--number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.cms-cell--center {
+  text-align: center;
+}
+
+.cms-cell--actions {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.cms-link {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dotted var(--cms-muted);
+}
+
+.cms-link:hover {
+  color: var(--p-primary-color, #2563eb);
+  border-bottom-style: solid;
+}
+
+.cms-date-range {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.cms-date-range > * {
+  flex: 1;
+  min-width: 0;
+}
+
+.cms-copy-source {
+  margin: 0 0 1rem;
+  color: var(--cms-muted);
+}
+
+.cms-field__hint {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--cms-muted);
+}
+
+:host ::ng-deep .p-datatable-header-cell {
+  white-space: nowrap;
+}
+
+:host ::ng-deep .cms-date-range .p-datepicker {
+  width: 100%;
+}

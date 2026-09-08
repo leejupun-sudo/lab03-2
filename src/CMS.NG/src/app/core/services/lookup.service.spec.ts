@@ -35,4 +35,29 @@ describe('LookupService', () => {
 
     expect(actual).toEqual(expected);
   });
+
+
+  it('getCertifications() issues GET to /lookups/certifications', () => {
+    service.getCertifications().subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/lookups/certifications`);
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
+  });
+
+  it('getJobCategories() issues GET to /lookups/job-categories', () => {
+    service.getJobCategories().subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/lookups/job-categories`);
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
+  });
+
+  it('getCourses() issues GET to /lookups/courses', () => {
+    service.getCourses().subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/lookups/courses`);
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
+  });
 });

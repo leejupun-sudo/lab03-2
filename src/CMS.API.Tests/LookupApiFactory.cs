@@ -23,7 +23,18 @@ public class LookupApiFactory : WebApplicationFactory<Program>
         // exactly the live shape that makes the Name tie-break and the (AppKey) label necessary.
         .SeedPartner(31, "國際標準課程", "PCB", 9999)
         .SeedPartner(11, "CompTIA", "CompTIA", 3)
-        .SeedPartner(19, "國際標準課程", "ISO", 9999);
+        .SeedPartner(19, "國際標準課程", "ISO", 9999)
+        // Certifications seeded out of order; the Fortinet pair shares a partner so Title breaks the tie.
+        // Titles carry nchar padding to prove the RTRIM reaches the wire.
+        .SeedCertification(34, "FCP-SN     ", "Fortinet資安專家認證課程", 50, 123)
+        .SeedCertification(5, "CCNA       ", "Cisco", 2, 4)
+        .SeedCertification(36, "FCP-PCS    ", "Fortinet資安專家認證課程", 50, 123)
+        .SeedJobCategory(24, "資訊安全 Security")
+        .SeedJobCategory(1, "網路系統工程 System Engineer")
+        .SeedJobCategory(16, "雲端技術 Cloud - Microsoft Azure")
+        .SeedCourse(41, "IINS", "CCNA Security認證-建置Cisco網路安全")
+        .SeedCourse(35, "PLF", "Oracle資料庫之PL／SQL基礎")
+        .SeedCourse(2063, "14064GLV", "ISO 14064溫室氣體主導查證師／確證師訓練課程");
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {

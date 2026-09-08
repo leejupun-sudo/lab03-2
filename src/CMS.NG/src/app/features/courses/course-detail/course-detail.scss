@@ -1,0 +1,34 @@
+.cms-detail-grid__value--number {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Free-text blocks keep their line breaks but never render as HTML. */
+.cms-detail-grid__value--text {
+  white-space: pre-wrap;
+}
+
+.cms-link {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dotted var(--cms-muted);
+}
+
+.cms-link:hover {
+  color: var(--p-primary-color, #2563eb);
+  border-bottom-style: solid;
+}
+
+.cms-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.cms-chip {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: var(--cms-page-bg);
+  border: 1px solid var(--cms-card-border);
+  font-size: 0.85rem;
+}

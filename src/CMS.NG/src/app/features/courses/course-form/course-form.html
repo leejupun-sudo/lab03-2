@@ -1,0 +1,428 @@
+<form [formGroup]="form" (ngSubmit)="save()">
+  <div class="cms-card cms-page-header cms-page-header--sticky">
+    <div class="cms-page-header__titles">
+      <h1 class="cms-page-header__title" data-testid="form-title">{{ title }}</h1>
+    </div>
+
+    <div class="cms-page-header__actions">
+      <p-button
+        type="button"
+        label="取消"
+        icon="pi pi-times"
+        severity="secondary"
+        [text]="true"
+        (onClick)="cancel()"
+      />
+      <p-button
+        type="submit"
+        label="儲存"
+        icon="pi pi-check"
+        [loading]="saving()"
+        data-testid="save-course"
+      />
+    </div>
+  </div>
+
+  <div class="cms-card">
+    <div class="cms-card__body">
+      <h2 class="cms-card__title">基本資料</h2>
+
+      @if (isEdit) {
+        <div class="cms-field">
+          <span class="cms-field__label">主代碼</span>
+          <div class="cms-field__readonly" data-testid="form-pkid">{{ pkid() }}</div>
+        </div>
+      }
+
+      <div class="cms-form-grid">
+        <div class="cms-field">
+          <label class="cms-field__label" for="courseId">
+            簡介代碼 <span class="cms-field__required">*</span>
+          </label>
+          <input
+            pInputText
+            id="courseId"
+            formControlName="courseId"
+            placeholder="例：PLF"
+            data-testid="input-course-id"
+          />
+          <small class="cms-field__hint">
+            @if (isEdit) {
+              推薦課程以簡介代碼參照本課程，建立後不可變更。
+            } @else {
+              需唯一，長度上限 50 字元；建立後不可變更。
+            }
+          </small>
+          @if (isInvalid('courseId')) {
+            <small class="cms-field__error" data-testid="error-course-id">
+              簡介代碼為必填，且長度不可超過 50 字元。
+            </small>
+          }
+        </div>
+
+        <div class="cms-field">
+          <label class="cms-field__label" for="prodCourseId">
+            科目代碼 <span class="cms-field__required">*</span>
+          </label>
+          <input
+            pInputText
+            id="prodCourseId"
+            formControlName="prodCourseId"
+            placeholder="例：PLF"
+            data-testid="input-prod-course-id"
+          />
+          @if (isInvalid('prodCourseId')) {
+            <small class="cms-field__error" data-testid="error-prod-course-id">
+              科目代碼為必填，且長度不可超過 50 字元。
+            </small>
+          }
+        </div>
+      </div>
+
+      <div class="cms-field">
+        <label class="cms-field__label" for="title">
+          課程名稱 <span class="cms-field__required">*</span>
+        </label>
+        <input
+          pInputText
+          id="title"
+          formControlName="title"
+          placeholder="例：Oracle資料庫之PL／SQL基礎"
+          data-testid="input-title"
+        />
+        @if (isInvalid('title')) {
+          <small class="cms-field__error" data-testid="error-title">
+            課程名稱為必填，且長度不可超過 200 字。
+          </small>
+        }
+      </div>
+
+      <div class="cms-field">
+        <label class="cms-field__label" for="officialTitle">官方課程名稱</label>
+        <input
+          pInputText
+          id="officialTitle"
+          formControlName="officialTitle"
+          placeholder="選填"
+          data-testid="input-official-title"
+        />
+        @if (isInvalid('officialTitle')) {
+          <small class="cms-field__error" data-testid="error-official-title">
+            官方課程名稱長度不可超過 300 字。
+          </small>
+        }
+      </div>
+
+      <div class="cms-field">
+        <label class="cms-field__label" for="friendlyUrl">
+          友善網址 <span class="cms-field__required">*</span>
+        </label>
+        <input
+          pInputText
+          id="friendlyUrl"
+          formControlName="friendlyUrl"
+          placeholder="例：Oracle資料庫-PL-SQL基礎"
+          data-testid="input-friendly-url"
+        />
+        <small class="cms-field__hint">長度上限 100 字。</small>
+        @if (isInvalid('friendlyUrl')) {
+          <small class="cms-field__error" data-testid="error-friendly-url">
+            友善網址為必填，且長度不可超過 100 字。
+          </small>
+        }
+      </div>
+
+      <div class="cms-form-grid cms-form-grid--3">
+        <div class="cms-field">
+          <label class="cms-field__label" for="partnerPkid">
+            原廠 <span class="cms-field__required">*</span>
+          </label>
+          <p-select
+            inputId="partnerPkid"
+            formControlName="partnerPkid"
+            optionLabel="label"
+            optionValue="pkid"
+            placeholder="選擇原廠"
+            appendTo="body"
+            [options]="partners()"
+            [filter]="true"
+            data-testid="select-partner"
+          />
+          @if (isInvalid('partnerPkid')) {
+            <small class="cms-field__error" data-testid="error-partner">原廠為必填。</small>
+          }
+        </div>
+
+        <div class="cms-field">
+          <label class="cms-field__label" for="courseGroupPkid">課程群組</label>
+          <p-select
+            inputId="courseGroupPkid"
+            formControlName="courseGroupPkid"
+            optionLabel="label"
+            optionValue="pkid"
+            placeholder="無"
+            appendTo="body"
+            [options]="courseGroups()"
+            [filter]="true"
+            [showClear]="true"
+            [virtualScroll]="true"
+            [virtualScrollItemSize]="43"
+            data-testid="select-course-group"
+          />
+        </div>
+
+        <div class="cms-field">
+          <label class="cms-field__label" for="publishStatusPkid">
+            上架狀態 <span class="cms-field__required">*</span>
+          </label>
+          <p-select
+            inputId="publishStatusPkid"
+            formControlName="publishStatusPkid"
+            optionLabel="label"
+            optionValue="pkid"
+            placeholder="選擇狀態"
+            appendTo="body"
+            [options]="publishStatuses()"
+            data-testid="select-publish-status"
+          />
+          @if (isInvalid('publishStatusPkid')) {
+            <small class="cms-field__error" data-testid="error-publish-status">上架狀態為必填。</small>
+          }
+        </div>
+      </div>
+
+      <div class="cms-form-grid">
+        <div class="cms-field">
+          <label class="cms-field__label" for="scheduleOn">
+            上架日期 <span class="cms-field__required">*</span>
+          </label>
+          <p-datepicker
+            inputId="scheduleOn"
+            formControlName="scheduleOn"
+            dateFormat="yy-mm-dd"
+            appendTo="body"
+            [showIcon]="true"
+            data-testid="input-schedule-on"
+          />
+          @if (!isEdit) {
+            <small class="cms-field__hint">選定後，下架日期會自動帶入 10 年後的同一天。</small>
+          }
+          @if (isInvalid('scheduleOn')) {
+            <small class="cms-field__error" data-testid="error-schedule-on">上架日期為必填。</small>
+          }
+        </div>
+
+        <div class="cms-field">
+          <label class="cms-field__label" for="scheduleOff">
+            下架日期 <span class="cms-field__required">*</span>
+          </label>
+          <p-datepicker
+            inputId="scheduleOff"
+            formControlName="scheduleOff"
+            dateFormat="yy-mm-dd"
+            appendTo="body"
+            [showIcon]="true"
+            data-testid="input-schedule-off"
+          />
+          @if (isInvalid('scheduleOff')) {
+            <small class="cms-field__error" data-testid="error-schedule-off">下架日期為必填。</small>
+          } @else if (hasScheduleRangeError) {
+            <small class="cms-field__error" data-testid="error-schedule-range">
+              下架日期不可早於上架日期。
+            </small>
+          }
+        </div>
+      </div>
+
+      <div class="cms-form-grid cms-form-grid--4">
+        <div class="cms-field">
+          <label class="cms-field__label" for="displayOrder">
+            顯示順序 <span class="cms-field__required">*</span>
+          </label>
+          <p-inputnumber
+            inputId="displayOrder"
+            formControlName="displayOrder"
+            [min]="0"
+            [max]="9999"
+            [useGrouping]="false"
+            data-testid="input-display-order"
+          />
+          @if (isInvalid('displayOrder')) {
+            <small class="cms-field__error" data-testid="error-display-order">
+              顯示順序須介於 0 到 9999。
+            </small>
+          }
+        </div>
+
+        <div class="cms-field">
+          <label class="cms-field__label" for="hour">
+            時數 <span class="cms-field__required">*</span>
+          </label>
+          <p-inputnumber
+            inputId="hour"
+            formControlName="hour"
+            [min]="0"
+            [max]="32767"
+            [useGrouping]="false"
+            data-testid="input-hour"
+          />
+          @if (isInvalid('hour')) {
+            <small class="cms-field__error" data-testid="error-hour">時數不可為負。</small>
+          }
+        </div>
+
+        <div class="cms-field">
+          <label class="cms-field__label" for="listPrice">
+            定價 <span class="cms-field__required">*</span>
+          </label>
+          <p-inputnumber
+            inputId="listPrice"
+            formControlName="listPrice"
+            [min]="0"
+            [max]="999999999"
+            [useGrouping]="true"
+            data-testid="input-list-price"
+          />
+          @if (isInvalid('listPrice')) {
+            <small class="cms-field__error" data-testid="error-list-price">定價不可為負。</small>
+          }
+        </div>
+
+        <div class="cms-field">
+          <label class="cms-field__label" for="learningCredit">
+            點數 <span class="cms-field__required">*</span>
+          </label>
+          <p-inputnumber
+            inputId="learningCredit"
+            formControlName="learningCredit"
+            mode="decimal"
+            [min]="0"
+            [max]="99999999.9"
+            [minFractionDigits]="0"
+            [maxFractionDigits]="1"
+            [useGrouping]="false"
+            data-testid="input-learning-credit"
+          />
+          <small class="cms-field__hint">可到小數一位。</small>
+          @if (isInvalid('learningCredit')) {
+            <small class="cms-field__error" data-testid="error-learning-credit">點數不可為負。</small>
+          }
+        </div>
+      </div>
+
+      <div class="cms-field">
+        <p-checkbox
+          inputId="canRepeat"
+          formControlName="canRepeat"
+          [binary]="true"
+          label="允許重聽"
+          data-testid="input-can-repeat"
+        />
+      </div>
+    </div>
+  </div>
+
+  <div class="cms-card">
+    <div class="cms-card__body">
+      <h2 class="cms-card__title">關聯</h2>
+
+      <div class="cms-field">
+        <label class="cms-field__label" for="certificationPkids">對應認證</label>
+        <p-multiselect
+          inputId="certificationPkids"
+          formControlName="certificationPkids"
+          optionLabel="label"
+          optionValue="pkid"
+          placeholder="選擇認證（可複選）"
+          appendTo="body"
+          [options]="certifications()"
+          [filter]="true"
+          [showClear]="true"
+          [maxSelectedLabels]="9999"
+          data-testid="select-certifications"
+        />
+      </div>
+
+      <div class="cms-field">
+        <label class="cms-field__label" for="jobCategoryPkids">職務類別</label>
+        <p-multiselect
+          inputId="jobCategoryPkids"
+          formControlName="jobCategoryPkids"
+          optionLabel="label"
+          optionValue="pkid"
+          placeholder="選擇職務類別（可複選）"
+          appendTo="body"
+          [options]="jobCategories()"
+          [filter]="true"
+          [showClear]="true"
+          [maxSelectedLabels]="9999"
+          data-testid="select-job-categories"
+        />
+      </div>
+    </div>
+  </div>
+
+  <div class="cms-card">
+    <div class="cms-card__body">
+      <h2 class="cms-card__title">課程內容</h2>
+
+      <div class="cms-field">
+        <label class="cms-field__label" for="material">教材</label>
+        <textarea pTextarea id="material" formControlName="material" rows="2" data-testid="input-material"></textarea>
+        @if (isInvalid('material')) {
+          <small class="cms-field__error">教材長度不可超過 500 字。</small>
+        }
+      </div>
+
+      <div class="cms-field">
+        <label class="cms-field__label" for="objective">課程目標</label>
+        <textarea pTextarea id="objective" formControlName="objective" rows="5" data-testid="input-objective"></textarea>
+        @if (isInvalid('objective')) {
+          <small class="cms-field__error">課程目標長度不可超過 4000 字。</small>
+        }
+      </div>
+
+      <div class="cms-field">
+        <label class="cms-field__label" for="target">適合對象</label>
+        <textarea pTextarea id="target" formControlName="target" rows="3" data-testid="input-target"></textarea>
+        @if (isInvalid('target')) {
+          <small class="cms-field__error">適合對象長度不可超過 500 字。</small>
+        }
+      </div>
+
+      <div class="cms-field">
+        <label class="cms-field__label" for="prerequisites">先備知識</label>
+        <textarea pTextarea id="prerequisites" formControlName="prerequisites" rows="4" data-testid="input-prerequisites"></textarea>
+        @if (isInvalid('prerequisites')) {
+          <small class="cms-field__error">先備知識長度不可超過 4000 字。</small>
+        }
+      </div>
+
+      <div class="cms-field">
+        <label class="cms-field__label" for="outline">課程大綱</label>
+        <textarea pTextarea id="outline" formControlName="outline" rows="12" data-testid="input-outline"></textarea>
+      </div>
+
+      <div class="cms-field">
+        <label class="cms-field__label" for="towardCertOrExam">考試／認證說明</label>
+        <textarea pTextarea id="towardCertOrExam" formControlName="towardCertOrExam" rows="6" data-testid="input-toward-cert-or-exam"></textarea>
+      </div>
+
+      <div class="cms-field">
+        <label class="cms-field__label" for="note">備註</label>
+        <textarea pTextarea id="note" formControlName="note" rows="4" data-testid="input-note"></textarea>
+        @if (isInvalid('note')) {
+          <small class="cms-field__error">備註長度不可超過 4000 字。</small>
+        }
+      </div>
+
+      <div class="cms-field">
+        <label class="cms-field__label" for="otherInfo">其他資訊</label>
+        <textarea pTextarea id="otherInfo" formControlName="otherInfo" rows="3" data-testid="input-other-info"></textarea>
+        @if (isInvalid('otherInfo')) {
+          <small class="cms-field__error">其他資訊長度不可超過 4000 字。</small>
+        }
+      </div>
+    </div>
+  </div>
+</form>

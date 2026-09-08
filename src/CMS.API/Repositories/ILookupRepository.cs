@@ -11,4 +11,10 @@ public interface ILookupRepository
     Task<IEnumerable<CourseGroupLookup>> GetCourseGroupsAsync(CancellationToken cancellationToken = default);
 
     Task<IEnumerable<PartnerLookup>> GetPartnersAsync(CancellationToken cancellationToken = default);
+
+    Task<IEnumerable<CertificationLookup>> GetCertificationsAsync(CancellationToken cancellationToken = default);
+
+    Task<IEnumerable<JobCategoryLookup>> GetJobCategoriesAsync(CancellationToken cancellationToken = default);
+
+    Task<IEnumerable<CourseLookup>> GetCoursesAsync(CancellationToken cancellationToken = default);
 }

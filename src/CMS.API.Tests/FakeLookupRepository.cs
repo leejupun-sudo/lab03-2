@@ -10,6 +10,9 @@ public class FakeLookupRepository : ILookupRepository
     private readonly List<PublishStatusLookup> _publishStatuses = [];
     private readonly List<CourseGroupLookup> _courseGroups = [];
     private readonly List<(PartnerLookup Lookup, int DisplayOrder)> _partners = [];
+    private readonly List<(CertificationLookup Lookup, int PartnerDisplayOrder, short PartnerPkid)> _certifications = [];
+    private readonly List<JobCategoryLookup> _jobCategories = [];
+    private readonly List<CourseLookup> _courses = [];
 
     public FakeLookupRepository SeedUser(string userId, string userName, bool isActive = true)
     {
@@ -32,6 +35,25 @@ public class FakeLookupRepository : ILookupRepository
     public FakeLookupRepository SeedPartner(short pkid, string name, string appKey, int displayOrder)
     {
         _partners.Add((new PartnerLookup { Pkid = pkid, Name = name, AppKey = appKey }, displayOrder));
+        return this;
+    }
+
+    /// <summary>Title is stored padded, as nchar(100) would hand it back before RTRIM.</summary>
+    public FakeLookupRepository SeedCertification(int pkid, string title, string partnerName, int partnerDisplayOrder, short partnerPkid)
+    {
+        _certifications.Add((new CertificationLookup { Pkid = pkid, Title = title.TrimEnd(), PartnerName = partnerName }, partnerDisplayOrder, partnerPkid));
+        return this;
+    }
+
+    public FakeLookupRepository SeedJobCategory(short pkid, string description)
+    {
+        _jobCategories.Add(new JobCategoryLookup { Pkid = pkid, Description = description });
+        return this;
+    }
+
+    public FakeLookupRepository SeedCourse(int pkid, string courseId, string title)
+    {
+        _courses.Add(new CourseLookup { Pkid = pkid, CourseId = courseId, Title = title });
         return this;
     }
 
@@ -60,4 +82,25 @@ public class FakeLookupRepository : ILookupRepository
                 .ThenBy(p => p.Lookup.Pkid)
                 .Select(p => p.Lookup)
                 .ToList());
+
+    /// <summary>Ordered by partner (DisplayOrder, Name, pkid) then Title, matching the SQL.</summary>
+    public Task<IEnumerable<CertificationLookup>> GetCertificationsAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IEnumerable<CertificationLookup>>(
+            _certifications
+                .OrderBy(c => c.PartnerDisplayOrder)
+                .ThenBy(c => c.Lookup.PartnerName, StringComparer.Ordinal)
+                .ThenBy(c => c.PartnerPkid)
+                .ThenBy(c => c.Lookup.Title, StringComparer.Ordinal)
+                .Select(c => c.Lookup)
+                .ToList());
+
+    /// <summary>Ordered by pkid — JobCategory has no DisplayOrder column.</summary>
+    public Task<IEnumerable<JobCategoryLookup>> GetJobCategoriesAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IEnumerable<JobCategoryLookup>>(
+            _jobCategories.OrderBy(j => j.Pkid).ToList());
+
+    /// <summary>Ordered by CourseId, which is unique.</summary>
+    public Task<IEnumerable<CourseLookup>> GetCoursesAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IEnumerable<CourseLookup>>(
+            _courses.OrderBy(c => c.CourseId, StringComparer.OrdinalIgnoreCase).ToList());
 }

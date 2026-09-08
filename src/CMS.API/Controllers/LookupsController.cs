@@ -49,4 +49,31 @@ public class LookupsController : ControllerBase
         var partners = await _repository.GetPartnersAsync(cancellationToken);
         return Ok(partners);
     }
+
+    /// <summary>認證清單 (Certification, 含原廠名稱).</summary>
+    [HttpGet("certifications")]
+    [ProducesResponseType(typeof(IEnumerable<CertificationLookup>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<CertificationLookup>>> GetCertifications(CancellationToken cancellationToken)
+    {
+        var certifications = await _repository.GetCertificationsAsync(cancellationToken);
+        return Ok(certifications);
+    }
+
+    /// <summary>職務類別清單 (JobCategory).</summary>
+    [HttpGet("job-categories")]
+    [ProducesResponseType(typeof(IEnumerable<JobCategoryLookup>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<JobCategoryLookup>>> GetJobCategories(CancellationToken cancellationToken)
+    {
+        var categories = await _repository.GetJobCategoriesAsync(cancellationToken);
+        return Ok(categories);
+    }
+
+    /// <summary>課程清單 (Course) — 約 1084 筆.</summary>
+    [HttpGet("courses")]
+    [ProducesResponseType(typeof(IEnumerable<CourseLookup>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<CourseLookup>>> GetCourses(CancellationToken cancellationToken)
+    {
+        var courses = await _repository.GetCoursesAsync(cancellationToken);
+        return Ok(courses);
+    }
 }

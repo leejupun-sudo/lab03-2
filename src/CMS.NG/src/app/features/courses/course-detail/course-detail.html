@@ -1,0 +1,214 @@
+<div class="cms-card cms-page-header">
+  <div class="cms-page-header__titles">
+    <h1 class="cms-page-header__title">課程明細</h1>
+    @if (course(); as item) {
+      <span class="cms-page-header__subtitle">{{ item.courseId }} {{ item.title }}</span>
+    }
+  </div>
+
+  <div class="cms-page-header__actions">
+    <p-button
+      label="返回"
+      icon="pi pi-arrow-left"
+      severity="secondary"
+      [text]="true"
+      (onClick)="goBack()"
+    />
+    @if (course(); as item) {
+      <p-button label="編輯" icon="pi pi-pencil" [routerLink]="['/courses', item.pkid, 'edit']" />
+    }
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="cms-card">
+    <div class="cms-card__body cms-empty">載入中…</div>
+  </div>
+} @else if (course(); as item) {
+  <div class="cms-card">
+    <div class="cms-card__body">
+      <h2 class="cms-card__title">基本資料</h2>
+
+      <dl class="cms-detail-grid">
+        <dt class="cms-detail-grid__label">主代碼</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-pkid">{{ item.pkid }}</dd>
+
+        <dt class="cms-detail-grid__label">簡介代碼</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-course-id">{{ item.courseId }}</dd>
+
+        <dt class="cms-detail-grid__label">科目代碼</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-prod-course-id">{{ item.prodCourseId }}</dd>
+
+        <dt class="cms-detail-grid__label">課程名稱</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-title">{{ item.title }}</dd>
+
+        <dt class="cms-detail-grid__label">官方課程名稱</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-official-title">
+          {{ item.officialTitle ?? '—' }}
+        </dd>
+
+        <dt class="cms-detail-grid__label">友善網址</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-friendly-url">{{ item.friendlyUrl }}</dd>
+
+        <dt class="cms-detail-grid__label">原廠</dt>
+        <dd class="cms-detail-grid__value">
+          <a [routerLink]="['/partners', item.partnerPkid]" class="cms-link" data-testid="detail-partner">
+            {{ item.partnerName }}
+          </a>
+        </dd>
+
+        <dt class="cms-detail-grid__label">課程群組</dt>
+        <dd class="cms-detail-grid__value">
+          @if (item.courseGroupPkid) {
+            <a
+              [routerLink]="['/course-groups', item.courseGroupPkid]"
+              class="cms-link"
+              data-testid="detail-course-group"
+            >
+              {{ item.courseGroupDescription }}
+            </a>
+          } @else {
+            <span data-testid="detail-course-group">—</span>
+          }
+        </dd>
+
+        <dt class="cms-detail-grid__label">上架狀態</dt>
+        <dd class="cms-detail-grid__value">
+          <a
+            [routerLink]="['/publish-statuses', item.publishStatusPkid]"
+            class="cms-link"
+            data-testid="detail-publish-status"
+          >
+            {{ item.publishStatusDescription }}
+          </a>
+        </dd>
+
+        <dt class="cms-detail-grid__label">上架日期</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-schedule-on">{{ item.scheduleOn }}</dd>
+
+        <dt class="cms-detail-grid__label">下架日期</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-schedule-off">{{ item.scheduleOff }}</dd>
+
+        <dt class="cms-detail-grid__label">顯示順序</dt>
+        <dd class="cms-detail-grid__value cms-detail-grid__value--number" data-testid="detail-display-order">
+          {{ item.displayOrder }}
+        </dd>
+
+        <dt class="cms-detail-grid__label">時數</dt>
+        <dd class="cms-detail-grid__value cms-detail-grid__value--number" data-testid="detail-hour">
+          {{ item.hour }}
+        </dd>
+
+        <dt class="cms-detail-grid__label">定價</dt>
+        <dd class="cms-detail-grid__value cms-detail-grid__value--number" data-testid="detail-list-price">
+          {{ item.listPrice | number: '1.0-0' }}
+        </dd>
+
+        <dt class="cms-detail-grid__label">點數</dt>
+        <dd class="cms-detail-grid__value cms-detail-grid__value--number" data-testid="detail-learning-credit">
+          {{ item.learningCredit | number: '1.0-1' }}
+        </dd>
+
+        <dt class="cms-detail-grid__label">允許重聽</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-can-repeat">{{ item.canRepeat ? '是' : '否' }}</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="cms-card">
+    <div class="cms-card__body">
+      <h2 class="cms-card__title">課程內容</h2>
+
+      <!-- Free text, rendered as text: 112 live outlines contain HTML and it stays inert here. -->
+      <dl class="cms-detail-grid">
+        <dt class="cms-detail-grid__label">教材</dt>
+        <dd class="cms-detail-grid__value cms-detail-grid__value--text" data-testid="detail-material">{{ item.material ?? '—' }}</dd>
+
+        <dt class="cms-detail-grid__label">課程目標</dt>
+        <dd class="cms-detail-grid__value cms-detail-grid__value--text" data-testid="detail-objective">{{ item.objective ?? '—' }}</dd>
+
+        <dt class="cms-detail-grid__label">適合對象</dt>
+        <dd class="cms-detail-grid__value cms-detail-grid__value--text" data-testid="detail-target">{{ item.target ?? '—' }}</dd>
+
+        <dt class="cms-detail-grid__label">先備知識</dt>
+        <dd class="cms-detail-grid__value cms-detail-grid__value--text" data-testid="detail-prerequisites">{{ item.prerequisites ?? '—' }}</dd>
+
+        <dt class="cms-detail-grid__label">課程大綱</dt>
+        <dd class="cms-detail-grid__value cms-detail-grid__value--text" data-testid="detail-outline">{{ item.outline ?? '—' }}</dd>
+
+        <dt class="cms-detail-grid__label">考試／認證說明</dt>
+        <dd class="cms-detail-grid__value cms-detail-grid__value--text" data-testid="detail-toward-cert-or-exam">{{ item.towardCertOrExam ?? '—' }}</dd>
+
+        <dt class="cms-detail-grid__label">備註</dt>
+        <dd class="cms-detail-grid__value cms-detail-grid__value--text" data-testid="detail-note">{{ item.note ?? '—' }}</dd>
+
+        <dt class="cms-detail-grid__label">其他資訊</dt>
+        <dd class="cms-detail-grid__value cms-detail-grid__value--text" data-testid="detail-other-info">{{ item.otherInfo ?? '—' }}</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="cms-card">
+    <div class="cms-card__body">
+      <h2 class="cms-card__title">關聯</h2>
+
+      <dl class="cms-detail-grid">
+        <dt class="cms-detail-grid__label">對應認證</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-certifications">
+          @if (certificationLabels().length > 0) {
+            <div class="cms-chips">
+              @for (label of certificationLabels(); track label) {
+                <span class="cms-chip" data-testid="detail-certification-chip">{{ label }}</span>
+              }
+            </div>
+          } @else {
+            <span class="cms-empty">—</span>
+          }
+        </dd>
+
+        <dt class="cms-detail-grid__label">職務類別</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-job-categories">
+          @if (jobCategoryLabels().length > 0) {
+            <div class="cms-chips">
+              @for (label of jobCategoryLabels(); track label) {
+                <span class="cms-chip" data-testid="detail-job-category-chip">{{ label }}</span>
+              }
+            </div>
+          } @else {
+            <span class="cms-empty">—</span>
+          }
+        </dd>
+
+        <dt class="cms-detail-grid__label">對應課程問答</dt>
+        <dd class="cms-detail-grid__value cms-detail-grid__value--number" data-testid="detail-faq-count">
+          {{ item.faqCount }}
+        </dd>
+
+        <dt class="cms-detail-grid__label">對應相關連結</dt>
+        <dd class="cms-detail-grid__value cms-detail-grid__value--number" data-testid="detail-related-link-count">
+          {{ item.relatedLinkCount }}
+        </dd>
+
+        <dt class="cms-detail-grid__label">對應熱門課程</dt>
+        <dd class="cms-detail-grid__value cms-detail-grid__value--number" data-testid="detail-hot-course-count">
+          {{ item.hotCourseCount }}
+        </dd>
+
+        <dt class="cms-detail-grid__label">對應推薦課程</dt>
+        <dd class="cms-detail-grid__value cms-detail-grid__value--number" data-testid="detail-recomm-count">
+          {{ item.recommCount }}
+        </dd>
+      </dl>
+
+      @if (isUnused) {
+        <p class="cms-empty" data-testid="detail-unused">
+          尚未被任何課程問答、相關連結、熱門課程或推薦課程使用。
+        </p>
+      }
+    </div>
+  </div>
+} @else {
+  <div class="cms-card">
+    <div class="cms-card__body cms-empty" data-testid="detail-not-found">查無此課程。</div>
+  </div>
+}
