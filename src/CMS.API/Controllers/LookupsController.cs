@@ -23,6 +23,15 @@ public class LookupsController : ControllerBase
         return Ok(users);
     }
 
+    /// <summary>角色清單 (AppRole) — value 為 RoleId.</summary>
+    [HttpGet("app-roles")]
+    [ProducesResponseType(typeof(IEnumerable<AppRoleLookup>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<AppRoleLookup>>> GetAppRoles(CancellationToken cancellationToken)
+    {
+        var roles = await _repository.GetAppRolesAsync(cancellationToken);
+        return Ok(roles);
+    }
+
     /// <summary>發布狀態清單 (PublishStatus).</summary>
     [HttpGet("publish-statuses")]
     [ProducesResponseType(typeof(IEnumerable<PublishStatusLookup>), StatusCodes.Status200OK)]

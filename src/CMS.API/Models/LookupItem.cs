@@ -21,6 +21,20 @@ public class AppUserLookup
     public string Label => $"{UserName} ({UserId})";
 }
 
+/// <summary>角色下拉選單項目 — value 為 RoleId (AppUserRole 儲存的是自然鍵, 不是 pkid).</summary>
+public class AppRoleLookup
+{
+    /// <summary>主代碼 — 讓消費端能連到 /app-roles/{pkid}.</summary>
+    public int Pkid { get; set; }
+
+    public string RoleId { get; set; } = string.Empty;
+
+    public string RoleName { get; set; } = string.Empty;
+
+    /// <summary>顯示標籤, 例: <c>Administrator (Admin)</c> — 與 <see cref="AppUserLookup.Label"/> 同形.</summary>
+    public string Label => $"{RoleName} ({RoleId})";
+}
+
 /// <summary>發布狀態下拉選單項目 — value 為 pkid.</summary>
 public class PublishStatusLookup
 {

@@ -11,6 +11,38 @@ public class LookupsControllerTests
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     [Fact]
+    public async Task GetAppRoles_ReturnsRowsOrderedByRoleId()
+    {
+        using var factory = new LookupApiFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/lookups/app-roles");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var roles = await response.Content.ReadFromJsonAsync<List<AppRoleLookup>>(JsonOptions);
+        Assert.NotNull(roles);
+        Assert.Equal(["Admin", "User"], roles.Select(r => r.RoleId));
+        Assert.Equal([1, 2], roles.Select(r => r.Pkid));
+    }
+
+    /// <summary>Label is computed — read the raw JSON so the `RoleName (RoleId)` shape is proven on the wire.</summary>
+    [Fact]
+    public async Task GetAppRoles_SerializesLabelOnTheWire()
+    {
+        using var factory = new LookupApiFactory();
+        using var client = factory.CreateClient();
+
+        var json = await client.GetStringAsync("/api/lookups/app-roles");
+
+        using var document = JsonDocument.Parse(json);
+        var labels = document.RootElement.EnumerateArray()
+            .Select(element => element.GetProperty("label").GetString())
+            .ToList();
+
+        Assert.Equal(["Administrator (Admin)", "User (User)"], labels);
+    }
+
+    [Fact]
     public async Task GetPublishStatuses_ReturnsRowsOrderedByPkid()
     {
         using var factory = new LookupApiFactory();

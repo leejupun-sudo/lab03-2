@@ -3,6 +3,30 @@ import { Routes } from '@angular/router';
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'app-roles' },
   {
+    path: 'app-users',
+    loadComponent: () =>
+      import('@features/app-users/app-user-list/app-user-list').then((m) => m.AppUserList),
+    title: '使用者 AppUser',
+  },
+  {
+    path: 'app-users/new',
+    loadComponent: () =>
+      import('@features/app-users/app-user-form/app-user-form').then((m) => m.AppUserForm),
+    title: '新增使用者',
+  },
+  {
+    path: 'app-users/:id/edit',
+    loadComponent: () =>
+      import('@features/app-users/app-user-form/app-user-form').then((m) => m.AppUserForm),
+    title: '編輯使用者',
+  },
+  {
+    path: 'app-users/:id',
+    loadComponent: () =>
+      import('@features/app-users/app-user-detail/app-user-detail').then((m) => m.AppUserDetail),
+    title: '使用者明細',
+  },
+  {
     path: 'app-roles',
     loadComponent: () =>
       import('@features/app-roles/app-role-list/app-role-list').then((m) => m.AppRoleList),

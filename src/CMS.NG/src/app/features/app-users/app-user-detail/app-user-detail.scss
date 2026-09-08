@@ -1,0 +1,16 @@
+.cms-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.cms-tag-link {
+  text-decoration: none;
+}
+
+.cms-field__hint {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--cms-muted);
+}

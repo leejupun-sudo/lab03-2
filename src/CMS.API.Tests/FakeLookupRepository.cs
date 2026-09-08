@@ -7,6 +7,7 @@ namespace CMS.API.Tests;
 public class FakeLookupRepository : ILookupRepository
 {
     private readonly List<AppUserLookup> _users = [];
+    private readonly List<AppRoleLookup> _roles = [];
     private readonly List<PublishStatusLookup> _publishStatuses = [];
     private readonly List<CourseGroupLookup> _courseGroups = [];
     private readonly List<(PartnerLookup Lookup, int DisplayOrder)> _partners = [];
@@ -17,6 +18,12 @@ public class FakeLookupRepository : ILookupRepository
     public FakeLookupRepository SeedUser(string userId, string userName, bool isActive = true)
     {
         _users.Add(new AppUserLookup { UserId = userId, UserName = userName, IsActive = isActive });
+        return this;
+    }
+
+    public FakeLookupRepository SeedRole(int pkid, string roleId, string roleName)
+    {
+        _roles.Add(new AppRoleLookup { Pkid = pkid, RoleId = roleId, RoleName = roleName });
         return this;
     }
 
@@ -60,6 +67,11 @@ public class FakeLookupRepository : ILookupRepository
     public Task<IEnumerable<AppUserLookup>> GetAppUsersAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<IEnumerable<AppUserLookup>>(
             _users.OrderBy(u => u.UserName, StringComparer.Ordinal).ToList());
+
+    /// <summary>Ordered by RoleId (the clustered PK), matching the SQL.</summary>
+    public Task<IEnumerable<AppRoleLookup>> GetAppRolesAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IEnumerable<AppRoleLookup>>(
+            _roles.OrderBy(r => r.RoleId, StringComparer.OrdinalIgnoreCase).ToList());
 
     public Task<IEnumerable<PublishStatusLookup>> GetPublishStatusesAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<IEnumerable<PublishStatusLookup>>(

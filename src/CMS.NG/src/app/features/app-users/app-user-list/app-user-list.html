@@ -1,0 +1,203 @@
+<div class="cms-card cms-page-header">
+  <div class="cms-page-header__titles">
+    <h1 class="cms-page-header__title">使用者 AppUser</h1>
+    <span class="cms-page-header__subtitle">後台登入帳號</span>
+  </div>
+
+  <div class="cms-page-header__actions">
+    <p-button
+      label="搜尋條件"
+      icon="pi pi-filter"
+      severity="secondary"
+      [text]="true"
+      [badge]="hasActiveFilters ? '!' : undefined"
+      data-testid="open-filters"
+      (onClick)="drawerVisible.set(true)"
+    />
+    <p-button label="新增" icon="pi pi-plus" data-testid="add-user" (onClick)="goToNew()" />
+  </div>
+</div>
+
+<div class="cms-card">
+  <p-table
+    [value]="users()"
+    [loading]="loading()"
+    [paginator]="true"
+    [rows]="pageState.rows"
+    [first]="pageState.first"
+    [rowsPerPageOptions]="rowsPerPageOptions"
+    [sortField]="sortState.sortField"
+    [sortOrder]="sortState.sortOrder"
+    [showCurrentPageReport]="true"
+    currentPageReportTemplate="{first}–{last} 筆，共 {totalRecords} 筆"
+    paginatorPosition="top"
+    dataKey="pkid"
+    styleClass="p-datatable-sm"
+    data-testid="user-table"
+    (onSort)="onSort($event)"
+    (onPage)="onPage($event)"
+  >
+    <ng-template #header>
+      <tr>
+        <th pSortableColumn="pkid" style="width: 6rem">主代碼 <p-sortIcon field="pkid" /></th>
+        <th pSortableColumn="userId">帳號 <p-sortIcon field="userId" /></th>
+        <th pSortableColumn="userName">姓名 <p-sortIcon field="userName" /></th>
+        <th pSortableColumn="isActive" style="width: 6rem" class="cms-cell--flag">
+          啟用 <p-sortIcon field="isActive" />
+        </th>
+        <th pSortableColumn="roleCount" style="width: 7rem" class="cms-cell--number">
+          角色數 <p-sortIcon field="roleCount" />
+        </th>
+        <th pSortableColumn="passwordUpdatedTime" style="width: 12rem">
+          密碼更新時間 <p-sortIcon field="passwordUpdatedTime" />
+        </th>
+        <th style="width: 10rem" class="cms-cell--actions">操作</th>
+      </tr>
+    </ng-template>
+
+    <ng-template #body let-user>
+      <tr data-testid="user-row">
+        <td>{{ user.pkid }}</td>
+        <td>{{ user.userId }}</td>
+        <td>{{ user.userName }}</td>
+        <td class="cms-cell--flag">
+          <p-tag
+            [value]="user.isActive ? '是' : '否'"
+            [severity]="user.isActive ? 'success' : 'secondary'"
+          />
+        </td>
+        <td class="cms-cell--number">{{ user.roleCount }}</td>
+        <td>
+          @if (user.passwordUpdatedTime) {
+            {{ user.passwordUpdatedTime + 'Z' | date: 'yyyy-MM-dd HH:mm' }}
+          } @else {
+            <span class="cms-empty">—</span>
+          }
+        </td>
+        <td class="cms-cell--actions">
+          <p-button
+            icon="pi pi-eye"
+            severity="secondary"
+            [text]="true"
+            [rounded]="true"
+            pTooltip="檢視"
+            [routerLink]="['/app-users', user.pkid]"
+          />
+          <p-button
+            icon="pi pi-pencil"
+            severity="info"
+            [text]="true"
+            [rounded]="true"
+            pTooltip="編輯"
+            [routerLink]="['/app-users', user.pkid, 'edit']"
+          />
+          <p-button
+            icon="pi pi-trash"
+            severity="danger"
+            [text]="true"
+            [rounded]="true"
+            pTooltip="刪除"
+            data-testid="delete-user"
+            (onClick)="confirmDelete(user)"
+          />
+        </td>
+      </tr>
+    </ng-template>
+
+    <ng-template #emptymessage>
+      <tr>
+        <td colspan="7" class="cms-empty">查無符合條件的使用者。</td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>
+
+<p-drawer
+  header="搜尋條件"
+  position="right"
+  [visible]="drawerVisible()"
+  (visibleChange)="drawerVisible.set($event)"
+  [style]="{ width: '24rem' }"
+>
+  <div class="cms-field">
+    <label class="cms-field__label" for="filter-keyword">關鍵字</label>
+    <input
+      pInputText
+      id="filter-keyword"
+      name="keyword"
+      placeholder="帳號／姓名"
+      data-testid="filter-keyword"
+      [(ngModel)]="filters.keyword"
+    />
+  </div>
+
+  <div class="cms-field">
+    <label class="cms-field__label" for="filter-is-active">啟用</label>
+    <p-select
+      inputId="filter-is-active"
+      optionLabel="label"
+      optionValue="value"
+      appendTo="body"
+      data-testid="filter-is-active"
+      [options]="triStateOptions"
+      [(ngModel)]="filters.isActive"
+    />
+  </div>
+
+  <div class="cms-field">
+    <label class="cms-field__label" for="filter-role">角色</label>
+    <p-select
+      inputId="filter-role"
+      optionLabel="label"
+      optionValue="roleId"
+      placeholder="全部"
+      appendTo="body"
+      data-testid="filter-role"
+      [options]="roles()"
+      [showClear]="true"
+      [(ngModel)]="filters.roleId"
+    />
+  </div>
+
+  <div class="cms-field">
+    <span class="cms-field__label">密碼更新時間</span>
+    <div class="cms-date-range">
+      <p-datepicker
+        inputId="filter-password-updated-from"
+        name="passwordUpdatedFrom"
+        dateFormat="yy-mm-dd"
+        placeholder="起"
+        appendTo="body"
+        [showIcon]="true"
+        [showClear]="true"
+        [(ngModel)]="filters.passwordUpdatedFrom"
+      />
+      <p-datepicker
+        inputId="filter-password-updated-to"
+        name="passwordUpdatedTo"
+        dateFormat="yy-mm-dd"
+        placeholder="迄"
+        appendTo="body"
+        [showIcon]="true"
+        [showClear]="true"
+        [(ngModel)]="filters.passwordUpdatedTo"
+      />
+    </div>
+  </div>
+
+  <div class="cms-drawer-actions">
+    <p-button
+      label="清除"
+      icon="pi pi-times"
+      severity="secondary"
+      [outlined]="true"
+      (onClick)="clearFilters()"
+    />
+    <p-button
+      label="搜尋"
+      icon="pi pi-search"
+      data-testid="apply-filters"
+      (onClick)="applyFilters()"
+    />
+  </div>
+</p-drawer>

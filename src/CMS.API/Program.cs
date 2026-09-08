@@ -46,6 +46,8 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddSingleton<IDbConnectionFactory, SqlConnectionFactory>();
 builder.Services.AddScoped<IAppRoleRepository, AppRoleRepository>();
+builder.Services.AddScoped<IAppUserRepository, AppUserRepository>();
+builder.Services.AddScoped<ISysConfigRepository, SysConfigRepository>();
 builder.Services.AddScoped<IPublishStatusRepository, PublishStatusRepository>();
 builder.Services.AddScoped<ICourseGroupRepository, CourseGroupRepository>();
 builder.Services.AddScoped<IPartnerRepository, PartnerRepository>();

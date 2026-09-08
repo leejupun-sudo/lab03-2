@@ -40,8 +40,21 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
 
+    const hrefs = fixture.debugElement
+      .queryAll(By.css('.cms-nav-item'))
+      .map((el) => (el.nativeElement as HTMLAnchorElement).getAttribute('href'));
+    expect(hrefs).toContain('/app-roles');
+  });
+
+  it('renders the 使用者 AppUser entry first in 系統管理 Admin, linked to /app-users', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('使用者 AppUser');
+
     const link = fixture.debugElement.query(By.css('.cms-nav-item'));
-    expect((link.nativeElement as HTMLAnchorElement).getAttribute('href')).toBe('/app-roles');
+    expect((link.nativeElement as HTMLAnchorElement).getAttribute('href')).toBe('/app-users');
   });
 
   it('renders the 發布狀態 PublishStatus entry in the same 系統管理 Admin group', () => {
@@ -55,6 +68,7 @@ describe('App', () => {
       .queryAll(By.css('.cms-nav-item'))
       .map((el) => (el.nativeElement as HTMLAnchorElement).getAttribute('href'));
     expect(hrefs).toEqual([
+      '/app-users',
       '/app-roles',
       '/publish-statuses',
       '/courses',

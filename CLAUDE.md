@@ -12,7 +12,7 @@ is the source of truth for how a table becomes code. Read both before adding a f
 | ------------------- | --------------------------------------------------------------- |
 | `database/*.sql`    | Table DDL — `auth.sql`, `admin.sql`, `course.sql`, `promotion.sql` |
 | `spec/`             | Codegen convention, feature-spec template, two worked spec samples, UI mockups |
-| `spec/{sub-system}/`| Real per-table build specs — `admin/PublishStatus.md`, `course/CourseGroup.md`, `course/Partner.md`, `course/Course.md` |
+| `spec/{sub-system}/`| Real per-table build specs — `auth/AppUser.md`, `admin/PublishStatus.md`, `course/CourseGroup.md`, `course/Partner.md`, `course/Course.md` |
 | `src/CMS.API`       | .NET 9 Web API, Dapper (no EF), port 5000                        |
 | `src/CMS.API.Tests` | xUnit endpoint tests                                             |
 | `src/CMS.NG`        | Angular 20 standalone + PrimeNG 20, port 4200                     |
@@ -143,9 +143,11 @@ only the repository under test for an in-memory fake. This exercises routing, mo
 binding, DataAnnotations validation and JSON casing without a database. `Program.cs` ends
 with `public partial class Program;` to make that possible — keep it.
 
-One factory + one fake per feature (`AppRoleApiFactory`, `PublishStatusApiFactory`,
-`CourseGroupApiFactory`, `PartnerApiFactory`, `CourseApiFactory`, plus `LookupApiFactory`
-for `LookupsController`). **Construct a
+One factory + one fake per feature (`AppRoleApiFactory`, `AppUserApiFactory`,
+`PublishStatusApiFactory`, `CourseGroupApiFactory`, `PartnerApiFactory`, `CourseApiFactory`,
+plus `LookupApiFactory` for `LookupsController`). `AppUserApiFactory` swaps a second
+repository too — `FakeSysConfigRepository`, so the default password is a known constant and
+the tests can assert its SHA-256 reached the user fake. **Construct a
 fresh factory per test** — the fakes hold mutable state. Seed the fake with data that
 actually exercises the rules: a referenced row so the delete guard has something to block,
 and duplicate names where duplicates are legal.
@@ -201,6 +203,39 @@ Two schema decisions that are easy to get wrong:
 `Description` is nullable in the schema, so the form treats it as optional and sends
 `null` when blank, even though the mockup draws a required asterisk. The UI PNGs in
 `spec/` are style references; the schema wins on content.
+
+## Feature: 使用者 AppUser (implemented)
+
+Sidebar **系統管理 Admin → 使用者 AppUser** (first in the group); routes under `/app-users`.
+Spec: `spec/auth/AppUser.md`.
+
+- Same two-key shape as `AppRole`: `pkid int IDENTITY` is the API address, the clustered PK
+  is **`UserId nvarchar(200)`**, which `AppUserRole` references. `UserId` is 409-guarded on
+  create (CI collation, so the check is case-insensitive) and **immutable** after — `UPDATE`
+  never writes it, the edit form disables it. `UserName` gets no duplicate check.
+- **`PasswordHash` never crosses the API.** It is on no model, request, or Angular
+  interface, and no `SELECT` reads it. On create the controller reads
+  `SysConfig.configValue WHERE configKey = 'appConfig'`, parses the JSON in C# (compat
+  level 100 — no `OPENJSON`), takes `defaultPassword`, and stores
+  `PasswordHasher.Sha256Hex()` of it: **SHA-256 over UTF-8, lowercase hex**. That format is
+  not a choice — it reproduces the one live row's hash exactly, and any other rendering
+  would create accounts the existing login path cannot verify. `UPDATE` never touches it.
+- `POST /api/app-users/{id}/reset-password` is the only other writer: same default hash,
+  `PasswordUpdatedTime = NULL` (the just-created state; `NULL` reads as "still on the default
+  password"). It takes no body. The detail page has a 重設密碼 button behind a confirm.
+- A missing `appConfig` row or blank `defaultPassword` throws → **500 on create/reset**. This
+  is a deployment fault, not a user conflict, and the one place a 500 is the honest answer.
+- `AppUserRole` is a real junction (PK on the FK pair, nothing FKs to it) — synced
+  delete-then-reinsert inside the parent transaction, keyed on `UserId`, and deleted with
+  the user. No 409 delete guard: the user owns its junction rows, exactly as `AppRole` does.
+- Lookup `/api/lookups/app-roles` is new; `value` is **`roleId`** (the natural key the
+  junction stores), label `RoleName (RoleId)`, and it carries `pkid` so detail tags can link
+  to `/app-roles/{pkid}`.
+- Query: keyword on `UserId`/`UserName`, `IsActive` tri-state, `RoleId` via `EXISTS` on the
+  junction, and a `PasswordUpdatedTime` date range using `< DATEADD(day, 1, @To)` so the
+  To day is inclusive on a `datetime` column. Default sort `UserId ASC`.
+- Not guarded, recorded in the spec: nothing stops deleting/deactivating the last active
+  user, and every endpoint (reset included) is unauthenticated like the rest of the API.
 
 ## Feature: 發布狀態 PublishStatus (implemented)
 
@@ -327,7 +362,9 @@ say so in the report.
   `/course-related-links`, `/hot-courses` and `/course-recomms` are dead routes. The specs
   record the routes and query-param names as the contract to build against. `/courses` is
   now live and accepts `partnerPkid` / `courseGroupPkid` / `publishStatusPkid`, so the
-  查看課程 buttons on those three detail pages are unblocked but not yet built.
+  查看課程 buttons on those three detail pages are unblocked but not yet built. `/app-users`
+  is live too; the contract for a 查看使用者 button on `AppRoleDetail` is
+  `/app-users?roleId={roleId}` (the natural key), which the user list does not yet read.
 - **The junction heuristic can be wrong** — see above.
 
 ## Adding a feature

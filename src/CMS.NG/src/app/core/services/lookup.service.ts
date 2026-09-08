@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '@env';
+import { AppRoleLookup } from '@core/models/app-role.model';
 import { AppUserLookup } from '@core/models/app-user.model';
 import { CertificationLookup, CourseLookup, JobCategoryLookup } from '@core/models/course.model';
 import { CourseGroupLookup } from '@core/models/course-group.model';
@@ -17,6 +18,10 @@ export class LookupService {
     return this.http.get<AppUserLookup[]>(`${this.baseUrl}/app-users`);
   }
 
+  /** 角色下拉選項. 資料庫僅 2 筆; `value` 是 `roleId` (AppUserRole 儲存自然鍵). */
+  getAppRoles(): Observable<AppRoleLookup[]> {
+    return this.http.get<AppRoleLookup[]>(`${this.baseUrl}/app-roles`);
+  }
 
   getPublishStatuses(): Observable<PublishStatusLookup[]> {
     return this.http.get<PublishStatusLookup[]>(`${this.baseUrl}/publish-statuses`);

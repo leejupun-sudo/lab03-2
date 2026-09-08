@@ -12,6 +12,9 @@ public class LookupApiFactory : WebApplicationFactory<Program>
     public FakeLookupRepository Repository { get; } = new FakeLookupRepository()
         .SeedUser("helen", "helen")
         .SeedUser("miles@uuu.com.tw", "Miles Sun")
+        // Seeded out of RoleId order so the ORDER BY RoleId is actually exercised.
+        .SeedRole(2, "User", "User")
+        .SeedRole(1, "Admin", "Administrator")
         .SeedPublishStatus(1, "草稿")
         .SeedPublishStatus(2, "上架中")
         .SeedPublishStatus(3, "已下架")

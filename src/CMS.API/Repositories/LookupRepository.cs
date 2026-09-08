@@ -23,6 +23,20 @@ public class LookupRepository : ILookupRepository
             new CommandDefinition(sql, cancellationToken: cancellationToken));
     }
 
+    public async Task<IEnumerable<AppRoleLookup>> GetAppRolesAsync(CancellationToken cancellationToken = default)
+    {
+        // 2 live rows; RoleId is the clustered PK, so it orders alone — same key as the role list.
+        const string sql = """
+            SELECT r.pkid AS Pkid, r.RoleId, r.RoleName
+            FROM AppRole r
+            ORDER BY r.RoleId ASC
+            """;
+
+        using var connection = await _connectionFactory.CreateOpenConnectionAsync(cancellationToken);
+        return await connection.QueryAsync<AppRoleLookup>(
+            new CommandDefinition(sql, cancellationToken: cancellationToken));
+    }
+
     public async Task<IEnumerable<PublishStatusLookup>> GetPublishStatusesAsync(CancellationToken cancellationToken = default)
     {
         const string sql = """

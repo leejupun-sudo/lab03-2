@@ -1,0 +1,24 @@
+.cms-field__hint {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--cms-muted);
+}
+
+.cms-form-note {
+  margin: 0 0 1rem;
+}
+
+.cms-flag {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Wrap the selected-role chips instead of overflowing the control. */
+:host ::ng-deep .p-multiselect-label {
+  white-space: normal;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
