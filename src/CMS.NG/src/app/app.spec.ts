@@ -53,8 +53,25 @@ describe('App', () => {
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('使用者 AppUser');
 
+    const hrefs = fixture.debugElement
+      .queryAll(By.css('.cms-nav-item'))
+      .map((el) => (el.nativeElement as HTMLAnchorElement).getAttribute('href'));
+    expect(hrefs.indexOf('/app-users')).toBe(hrefs.indexOf('/app-roles') - 1);
+  });
+
+  it('renders the 首頁 Home group first, with 上稿作業 FeaturedPromoItem linked to /featured-promo-items', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('首頁 Home');
+    expect(text).toContain('上稿作業 FeaturedPromoItem');
+
+    const firstGroup = fixture.debugElement.query(By.css('.cms-nav-group__label'));
+    expect(((firstGroup.nativeElement as HTMLElement).textContent ?? '').trim()).toBe('首頁 Home');
+
     const link = fixture.debugElement.query(By.css('.cms-nav-item'));
-    expect((link.nativeElement as HTMLAnchorElement).getAttribute('href')).toBe('/app-users');
+    expect((link.nativeElement as HTMLAnchorElement).getAttribute('href')).toBe('/featured-promo-items');
   });
 
   it('renders the 發布狀態 PublishStatus entry in the same 系統管理 Admin group', () => {
@@ -68,6 +85,7 @@ describe('App', () => {
       .queryAll(By.css('.cms-nav-item'))
       .map((el) => (el.nativeElement as HTMLAnchorElement).getAttribute('href'));
     expect(hrefs).toEqual([
+      '/featured-promo-items',
       '/app-users',
       '/app-roles',
       '/publish-statuses',
@@ -86,14 +104,14 @@ describe('App', () => {
     expect(text).toContain('課程群組 CourseGroup');
   });
 
-  it('renders 課程管理 Course as a second group, after 系統管理 Admin', () => {
+  it('renders the three groups in order: 首頁 Home, 系統管理 Admin, 課程管理 Course', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
 
     const groupLabels = fixture.debugElement
       .queryAll(By.css('.cms-nav-group__label'))
       .map((el) => ((el.nativeElement as HTMLElement).textContent ?? '').trim());
-    expect(groupLabels).toEqual(['系統管理 Admin', '課程管理 Course']);
+    expect(groupLabels).toEqual(['首頁 Home', '系統管理 Admin', '課程管理 Course']);
   });
 
   it('links the 課程群組 CourseGroup entry to /course-groups', () => {

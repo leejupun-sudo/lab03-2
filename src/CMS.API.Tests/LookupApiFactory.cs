@@ -37,7 +37,20 @@ public class LookupApiFactory : WebApplicationFactory<Program>
         .SeedJobCategory(16, "雲端技術 Cloud - Microsoft Azure")
         .SeedCourse(41, "IINS", "CCNA Security認證-建置Cisco網路安全")
         .SeedCourse(35, "PLF", "Oracle資料庫之PL／SQL基礎")
-        .SeedCourse(2063, "14064GLV", "ISO 14064溫室氣體主導查證師／確證師訓練課程");
+        .SeedCourse(2063, "14064GLV", "ISO 14064溫室氣體主導查證師／確證師訓練課程")
+        // The five live centres, seeded out of DisplayOrder so the ORDER BY is exercised.
+        // pkid 54 sits last by DisplayOrder despite being the newest row.
+        .SeedTrainingCenter(54, "線上研討會", "ONL", 5)
+        .SeedTrainingCenter(1, "台北", "TPE", 1)
+        .SeedTrainingCenter(3, "台中", "TCH", 3)
+        .SeedTrainingCenter(2, "新竹", "HSU", 2)
+        .SeedTrainingCenter(5, "高雄", "KAU", 4)
+        // Promotions: two share the "n8n" fragment in different case, and the newest ScheduleOn
+        // belongs to the LOWEST pkid so date-desc ordering is distinguishable from pkid order.
+        .SeedPromotion2(3403, "20251204_SkillTrainAI", "成為能AI協作的程式設計師", "轉職就業養成班", "2025-12-04")
+        .SeedPromotion2(3423, "20251215_n8n", "n8n自動化三部曲", "從自動化新手到企業級AI架構師", "2025-12-15")
+        .SeedPromotion2(3393, "20251219_GoogleAIseminar", "Google AI工具一次掌握", "不需技術基礎", "2025-12-19")
+        .SeedPromotion2(2000, "N8N-legacy", "舊的 n8n 活動", "大寫代碼", "2026-01-05");
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {

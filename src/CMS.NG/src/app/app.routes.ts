@@ -3,6 +3,15 @@ import { Routes } from '@angular/router';
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'app-roles' },
   {
+    // One route only: 新增／編輯 happen inline in the weekly grid (see spec/promotion/FeaturedPromoItem.md).
+    path: 'featured-promo-items',
+    loadComponent: () =>
+      import('@features/featured-promo-items/featured-promo-item-list/featured-promo-item-list').then(
+        (m) => m.FeaturedPromoItemList,
+      ),
+    title: '上稿作業 FeaturedPromoItem',
+  },
+  {
     path: 'app-users',
     loadComponent: () =>
       import('@features/app-users/app-user-list/app-user-list').then((m) => m.AppUserList),

@@ -75,4 +75,28 @@ describe('LookupService', () => {
     expect(req.request.method).toBe('GET');
     req.flush([]);
   });
+
+  it('getTrainingCenters() issues GET to /lookups/training-centers', () => {
+    service.getTrainingCenters().subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/lookups/training-centers`);
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
+  });
+
+  it('getPromotion2s() issues GET to /lookups/promotion2s with the trimmed keyword', () => {
+    service.getPromotion2s('  n8n ').subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/lookups/promotion2s?keyword=n8n`);
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
+  });
+
+  it('getPromotion2s() omits the keyword param when it is blank', () => {
+    service.getPromotion2s('   ').subscribe();
+    httpMock.expectOne(`${environment.apiBaseUrl}/lookups/promotion2s`).flush([]);
+
+    service.getPromotion2s().subscribe();
+    httpMock.expectOne(`${environment.apiBaseUrl}/lookups/promotion2s`).flush([]);
+  });
 });

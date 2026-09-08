@@ -393,7 +393,7 @@ Task<bool> UserIdExistsAsync(string userId, int? excludePkid = null, ct);
 
 ### RowAudit
 
-Not implemented — see *Gaps between the `/crud` skill and this codebase* in `CLAUDE.md`.
+Not implemented — see *Gaps between the `/crud` skill and this codebase* in `docs/claude/adding-a-feature.md`.
 
 ---
 

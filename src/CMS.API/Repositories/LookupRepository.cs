@@ -123,4 +123,41 @@ public class LookupRepository : ILookupRepository
         return await connection.QueryAsync<CourseLookup>(
             new CommandDefinition(sql, cancellationToken: cancellationToken));
     }
+
+    public async Task<IEnumerable<TrainingCenterLookup>> GetTrainingCentersAsync(CancellationToken cancellationToken = default)
+    {
+        // 5 rows (台北 / 新竹 / 台中 / 高雄 / 線上研討會) with distinct DisplayOrder 1..5;
+        // pkid closes the order in case two ever tie. Name is nvarchar, not nchar — no RTRIM.
+        const string sql = """
+            SELECT t.pkid AS Pkid, t.Name, t.AppKey
+            FROM TrainingCenter t
+            ORDER BY t.DisplayOrder ASC, t.pkid ASC
+            """;
+
+        using var connection = await _connectionFactory.CreateOpenConnectionAsync(cancellationToken);
+        return await connection.QueryAsync<TrainingCenterLookup>(
+            new CommandDefinition(sql, cancellationToken: cancellationToken));
+    }
+
+    public async Task<IEnumerable<Promotion2Lookup>> GetPromotion2sAsync(string? keyword, CancellationToken cancellationToken = default)
+    {
+        // Contains-match on PromoCode only (the column the spec says to look up by); the
+        // column's collation is CI so no LOWER() is needed. Newest promotions first — that is
+        // what an editor is looking for when scheduling this week's home page.
+        // Compat level 100: TOP (@N) is fine, OFFSET/FETCH is not.
+        const string sql = """
+            SELECT TOP (@Limit) p.pkid AS Pkid, p.PromoCode, p.Topic, p.Description
+            FROM Promotion2 p
+            WHERE @Keyword IS NULL OR p.PromoCode LIKE @Keyword
+            ORDER BY p.ScheduleOn DESC, p.PromoCode ASC
+            """;
+
+        var trimmed = string.IsNullOrWhiteSpace(keyword) ? null : "%" + keyword.Trim() + "%";
+
+        using var connection = await _connectionFactory.CreateOpenConnectionAsync(cancellationToken);
+        return await connection.QueryAsync<Promotion2Lookup>(new CommandDefinition(
+            sql,
+            new { Keyword = trimmed, Limit = ILookupRepository.Promotion2LookupLimit },
+            cancellationToken: cancellationToken));
+    }
 }

@@ -31,6 +31,14 @@ export class App {
   /** Sidebar nav groups. Add new features under the matching group. */
   protected readonly navGroups = signal<NavGroup[]>([
     {
+      label: '首頁 Home',
+      icon: 'pi pi-home',
+      expanded: true,
+      items: [
+        { label: '上稿作業 FeaturedPromoItem', icon: 'pi pi-calendar', route: '/featured-promo-items' },
+      ],
+    },
+    {
       label: '系統管理 Admin',
       icon: 'pi pi-shield',
       expanded: true,

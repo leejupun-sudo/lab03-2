@@ -34,3 +34,34 @@ export function addYears(date: Date, years: number): Date {
   result.setFullYear(result.getFullYear() + years);
   return result;
 }
+
+/** A new `Date` `days` after `date` (negative goes back), at the same local time. */
+export function addDays(date: Date, days: number): Date {
+  const result = new Date(date.getTime());
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+/**
+ * Local-midnight Monday of the week containing `date`. `getDay()` is 0 for Sunday, so a
+ * Sunday goes back six days rather than forward one — the same rule as the API's
+ * `FeaturedPromoItemQuery.StartOfWeek`, and both sides must agree on it.
+ */
+export function startOfWeek(date: Date): Date {
+  const daysSinceMonday = (date.getDay() + 6) % 7;
+  const monday = addDays(date, -daysSinceMonday);
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+}
+
+const WEEKDAY_ZH = ['日', '一', '二', '三', '四', '五', '六'] as const;
+
+/** `M/d`, no padding — matches the 上稿作業 mockup (`3/16`). */
+export function formatMonthDay(date: Date): string {
+  return `${date.getMonth() + 1}/${date.getDate()}`;
+}
+
+/** `M/d (一)` — the day header in the weekly grid. */
+export function formatDayLabel(date: Date): string {
+  return `${formatMonthDay(date)} (${WEEKDAY_ZH[date.getDay()]})`;
+}

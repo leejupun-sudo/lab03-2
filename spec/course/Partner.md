@@ -572,7 +572,7 @@ builder.Services.AddScoped<IPartnerRepository, PartnerRepository>();
 
 ### RowAudit
 
-Not implemented — see *Gaps between the `/crud` skill and this codebase* in `CLAUDE.md`.
+Not implemented — see *Gaps between the `/crud` skill and this codebase* in `docs/claude/adding-a-feature.md`.
 No `RowAuditWriter` exists, so none is injected, exactly as in the three shipped features.
 
 ---

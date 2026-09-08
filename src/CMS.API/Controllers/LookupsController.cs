@@ -85,4 +85,24 @@ public class LookupsController : ControllerBase
         var courses = await _repository.GetCoursesAsync(cancellationToken);
         return Ok(courses);
     }
+
+    /// <summary>據點清單 (TrainingCenter) — 5 筆, 依 DisplayOrder.</summary>
+    [HttpGet("training-centers")]
+    [ProducesResponseType(typeof(IEnumerable<TrainingCenterLookup>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<TrainingCenterLookup>>> GetTrainingCenters(CancellationToken cancellationToken)
+    {
+        var centers = await _repository.GetTrainingCentersAsync(cancellationToken);
+        return Ok(centers);
+    }
+
+    /// <summary>促銷活動查詢 (Promotion2) — keyword 比對促銷代碼, 最多 20 筆, 新到舊. 給自動完成用.</summary>
+    [HttpGet("promotion2s")]
+    [ProducesResponseType(typeof(IEnumerable<Promotion2Lookup>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<Promotion2Lookup>>> GetPromotion2s(
+        [FromQuery] string? keyword,
+        CancellationToken cancellationToken)
+    {
+        var promotions = await _repository.GetPromotion2sAsync(keyword, cancellationToken);
+        return Ok(promotions);
+    }
 }

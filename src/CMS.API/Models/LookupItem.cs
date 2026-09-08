@@ -117,3 +117,36 @@ public class CourseLookup
     /// <summary>顯示標籤, 例: <c>PLF Oracle資料庫之PL／SQL基礎</c>.</summary>
     public string Label => $"{CourseId} {Title}";
 }
+
+/// <summary>據點下拉／頁籤項目 — value 為 pkid. 線上 5 筆, 依 DisplayOrder 排序.</summary>
+public class TrainingCenterLookup
+{
+    public short Pkid { get; set; }
+
+    /// <summary>據點名稱 — nvarchar(10), 例: <c>台北</c>、<c>線上研討會</c>.</summary>
+    public string Name { get; set; } = string.Empty;
+
+    public string AppKey { get; set; } = string.Empty;
+
+    /// <summary>顯示標籤 — 即據點名稱; 5 筆全部相異, 不需要附 AppKey.</summary>
+    public string Label => Name;
+}
+
+/// <summary>
+/// 促銷活動 (Promotion2) 查詢項目 — value 為 pkid. 上稿表單以促銷代碼查詢後帶入 Promotion_pkid,
+/// 並以 Topic / Description 預填表單.
+/// </summary>
+public class Promotion2Lookup
+{
+    public int Pkid { get; set; }
+
+    /// <summary>促銷代碼 — 唯一 (IX_Promotion2_UniquePromoCode), 大小寫不分.</summary>
+    public string PromoCode { get; set; } = string.Empty;
+
+    public string Topic { get; set; } = string.Empty;
+
+    public string Description { get; set; } = string.Empty;
+
+    /// <summary>顯示標籤 — 即促銷代碼, 它本身就唯一.</summary>
+    public string Label => PromoCode;
+}

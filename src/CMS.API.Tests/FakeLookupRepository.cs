@@ -14,6 +14,8 @@ public class FakeLookupRepository : ILookupRepository
     private readonly List<(CertificationLookup Lookup, int PartnerDisplayOrder, short PartnerPkid)> _certifications = [];
     private readonly List<JobCategoryLookup> _jobCategories = [];
     private readonly List<CourseLookup> _courses = [];
+    private readonly List<(TrainingCenterLookup Lookup, int DisplayOrder)> _trainingCenters = [];
+    private readonly List<(Promotion2Lookup Lookup, DateOnly ScheduleOn)> _promotion2s = [];
 
     public FakeLookupRepository SeedUser(string userId, string userName, bool isActive = true)
     {
@@ -61,6 +63,20 @@ public class FakeLookupRepository : ILookupRepository
     public FakeLookupRepository SeedCourse(int pkid, string courseId, string title)
     {
         _courses.Add(new CourseLookup { Pkid = pkid, CourseId = courseId, Title = title });
+        return this;
+    }
+
+    public FakeLookupRepository SeedTrainingCenter(short pkid, string name, string appKey, int displayOrder)
+    {
+        _trainingCenters.Add((new TrainingCenterLookup { Pkid = pkid, Name = name, AppKey = appKey }, displayOrder));
+        return this;
+    }
+
+    public FakeLookupRepository SeedPromotion2(int pkid, string promoCode, string topic, string description, string scheduleOn)
+    {
+        _promotion2s.Add((
+            new Promotion2Lookup { Pkid = pkid, PromoCode = promoCode, Topic = topic, Description = description },
+            DateOnly.Parse(scheduleOn)));
         return this;
     }
 
@@ -115,4 +131,36 @@ public class FakeLookupRepository : ILookupRepository
     public Task<IEnumerable<CourseLookup>> GetCoursesAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<IEnumerable<CourseLookup>>(
             _courses.OrderBy(c => c.CourseId, StringComparer.OrdinalIgnoreCase).ToList());
+
+    /// <summary>Ordered by DisplayOrder then pkid, matching the SQL.</summary>
+    public Task<IEnumerable<TrainingCenterLookup>> GetTrainingCentersAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IEnumerable<TrainingCenterLookup>>(
+            _trainingCenters
+                .OrderBy(t => t.DisplayOrder)
+                .ThenBy(t => t.Lookup.Pkid)
+                .Select(t => t.Lookup)
+                .ToList());
+
+    /// <summary>
+    /// Contains-match on PromoCode, case-insensitive (the column collation is CI), newest
+    /// ScheduleOn first, capped at <see cref="ILookupRepository.Promotion2LookupLimit"/> — matching the SQL.
+    /// </summary>
+    public Task<IEnumerable<Promotion2Lookup>> GetPromotion2sAsync(string? keyword, CancellationToken cancellationToken = default)
+    {
+        IEnumerable<(Promotion2Lookup Lookup, DateOnly ScheduleOn)> results = _promotion2s;
+
+        if (!string.IsNullOrWhiteSpace(keyword))
+        {
+            var trimmed = keyword.Trim();
+            results = results.Where(p => p.Lookup.PromoCode.Contains(trimmed, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return Task.FromResult<IEnumerable<Promotion2Lookup>>(
+            results
+                .OrderByDescending(p => p.ScheduleOn)
+                .ThenBy(p => p.Lookup.PromoCode, StringComparer.OrdinalIgnoreCase)
+                .Take(ILookupRepository.Promotion2LookupLimit)
+                .Select(p => p.Lookup)
+                .ToList());
+    }
 }

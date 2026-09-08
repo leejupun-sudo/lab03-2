@@ -143,7 +143,7 @@ guard is never "simplified" away.
 
 ## Two true N-N junctions
 
-Both pass the junction test from `CLAUDE.md`: composite PK on the FK pair, no surrogate
+Both pass the junction test from `docs/claude/schema-traps.md`: composite PK on the FK pair, no surrogate
 key, no payload, nothing FKs to them, and both cascade from `Course`.
 
 | Junction | Columns | Partner entity | Live max per course |
@@ -630,7 +630,7 @@ Register: `builder.Services.AddScoped<ICourseRepository, CourseRepository>();`
 
 ### RowAudit
 
-Not implemented — no `RowAuditWriter` exists in the codebase (see `CLAUDE.md`, *Gaps*).
+Not implemented — no `RowAuditWriter` exists in the codebase (see *Gaps* in `docs/claude/adding-a-feature.md`).
 The `RowAudit` table has 0 rows.
 
 ---
