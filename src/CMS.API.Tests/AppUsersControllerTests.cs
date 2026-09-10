@@ -387,7 +387,9 @@ public class AppUsersControllerTests
     public async Task Create_WhenDefaultPasswordIsMissing_Returns500AndCreatesNothing()
     {
         using var factory = new AppUserApiFactory();
-        factory.SysConfig.Config = null;
+        // Blank the default password but keep the signing key: both live in the same appConfig row,
+        // and dropping the key would fail authentication and mask the 500 this test is about.
+        factory.SysConfig.Config = new AppConfig { SymmetricSecurityKey = FakeSysConfigRepository.SymmetricSecurityKey };
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync("/api/app-users", Request("bob", "Bob Chen"), JsonOptions);
@@ -596,7 +598,9 @@ public class AppUsersControllerTests
     public async Task ResetPassword_WhenDefaultPasswordIsMissing_Returns500AndKeepsTheHash()
     {
         using var factory = new AppUserApiFactory();
-        factory.SysConfig.Config = null;
+        // Blank the default password but keep the signing key: both live in the same appConfig row,
+        // and dropping the key would fail authentication and mask the 500 this test is about.
+        factory.SysConfig.Config = new AppConfig { SymmetricSecurityKey = FakeSysConfigRepository.SymmetricSecurityKey };
         using var client = factory.CreateClient();
         var hashBefore = factory.Repository.PasswordHashOf(2);
 

@@ -1,10 +1,16 @@
 using CMS.API.Models;
 using CMS.API.Repositories;
+using CMS.API.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CMS.API.Controllers;
 
 /// <summary>下拉選單用的精簡清單.</summary>
+/// <remarks>
+/// 角色檢查掛在<b>個別 action</b> 上, 不是整個類別: 這裡多數清單 (發布狀態、課程群組、合作廠商…)
+/// 是課程維護表單在用的, 一般使用者必須讀得到。只有使用者與角色兩份清單是 系統管理 專用。
+/// </remarks>
 [ApiController]
 [Route("api/lookups")]
 [Produces("application/json")]
@@ -14,7 +20,12 @@ public class LookupsController : ControllerBase
 
     public LookupsController(ILookupRepository repository) => _repository = repository;
 
-    /// <summary>使用者清單 (AppUser).</summary>
+    /// <summary>使用者清單 (AppUser) — 僅限 Admin.</summary>
+    /// <remarks>
+    /// 只有 角色 的明細頁與表單會呼叫它, 兩者都已是 Admin 專屬畫面。不擋的話, 前面替
+    /// <c>AppUsersController</c> 加的角色檢查等於白做一半 — 一般使用者仍能從這裡把全部帳號列出來。
+    /// </remarks>
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpGet("app-users")]
     [ProducesResponseType(typeof(IEnumerable<AppUserLookup>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<AppUserLookup>>> GetAppUsers(CancellationToken cancellationToken)
@@ -23,7 +34,9 @@ public class LookupsController : ControllerBase
         return Ok(users);
     }
 
-    /// <summary>角色清單 (AppRole) — value 為 RoleId.</summary>
+    /// <summary>角色清單 (AppRole) — value 為 RoleId. 僅限 Admin.</summary>
+    /// <remarks>只有 使用者 的清單頁、明細頁與表單會呼叫它, 三者都已是 Admin 專屬畫面。</remarks>
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpGet("app-roles")]
     [ProducesResponseType(typeof(IEnumerable<AppRoleLookup>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<AppRoleLookup>>> GetAppRoles(CancellationToken cancellationToken)

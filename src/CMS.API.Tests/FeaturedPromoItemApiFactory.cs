@@ -1,6 +1,4 @@
 using CMS.API.Repositories;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -10,7 +8,7 @@ namespace CMS.API.Tests;
 /// Hosts the real API pipeline with the SQL-backed repository swapped for
 /// <see cref="FakeFeaturedPromoItemRepository"/>, so the endpoint tests need no database.
 /// </summary>
-public class FeaturedPromoItemApiFactory : WebApplicationFactory<Program>
+public class FeaturedPromoItemApiFactory : ApiFactory
 {
     // The seed is built around the week of Monday 2026-03-16 .. Sunday 2026-03-22 for centre 1
     // (台北), with one row on each side of the boundary so the week filter is actually tested:
@@ -38,13 +36,9 @@ public class FeaturedPromoItemApiFactory : WebApplicationFactory<Program>
         .Seed("2026-03-15", 1, 1, 3403, "上週日", "也不屬於這一週")
         .Seed("2026-03-16", 2, 1, 3393, "新竹的第一格", "另一個據點");
 
-    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    protected override void ConfigureFakes(IServiceCollection services)
     {
-        builder.UseEnvironment("Development");
-        builder.ConfigureServices(services =>
-        {
-            services.RemoveAll<IFeaturedPromoItemRepository>();
-            services.AddSingleton<IFeaturedPromoItemRepository>(Repository);
-        });
+        services.RemoveAll<IFeaturedPromoItemRepository>();
+        services.AddSingleton<IFeaturedPromoItemRepository>(Repository);
     }
 }

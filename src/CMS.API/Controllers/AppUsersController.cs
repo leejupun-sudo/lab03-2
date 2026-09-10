@@ -1,12 +1,25 @@
 using CMS.API.Models;
 using CMS.API.Repositories;
 using CMS.API.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CMS.API.Controllers;
 
-/// <summary>使用者 AppUser CRUD.</summary>
+/// <summary>使用者 AppUser CRUD — 僅限 Admin.</summary>
+/// <remarks>
+/// <c>MapControllers().RequireAuthorization()</c> 只保證「有一張有效的 token」, 不區分持有者是誰;
+/// 這裡的 <see cref="AuthorizeAttribute"/> 才是真正的角色檢查。沒有它的話, 任何登入者都能呼叫
+/// <see cref="ResetPassword"/> 把別人 (包括 Admin) 的密碼重設成 SysConfig 的預設密碼 — 而每個帳號
+/// 都是用那個預設密碼開出來的, 所以攻擊者本來就知道它, 接著就能直接登入那個帳號。
+/// <para>
+/// <b>本檔案與 <c>AppRolesController</c> 的角色檢查必須同進同退。</b>
+/// <c>AppRoleRequest.UserIds</c> 會經由 <c>SyncUserRolesAsync</c> 覆寫整份 <c>AppUserRole</c>
+/// 名單, 只擋這裡而不擋那裡, 等於留下一個「自己把自己加進 Admin」的入口, 一次請求就能繞過本行。
+/// </para>
+/// </remarks>
 [ApiController]
+[Authorize(Roles = AppRoles.Admin)]
 [Route("api/app-users")]
 [Produces("application/json")]
 public class AppUsersController : ControllerBase

@@ -1,6 +1,4 @@
 using CMS.API.Repositories;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -10,7 +8,7 @@ namespace CMS.API.Tests;
 /// Hosts the real API pipeline with the SQL-backed repository swapped for
 /// <see cref="FakeCourseRepository"/>, so the endpoint tests need no database.
 /// </summary>
-public class CourseApiFactory : WebApplicationFactory<Program>
+public class CourseApiFactory : ApiFactory
 {
     // The seed is chosen so every rule the spec records is actually exercised:
     //
@@ -50,13 +48,9 @@ public class CourseApiFactory : WebApplicationFactory<Program>
             displayOrder: 2, hour: 28, listPrice: 42000, learningCredit: 12.5m,
             friendlyUrl: "Azure-Fundamentals", jobCategoryPkids: [16]);
 
-    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    protected override void ConfigureFakes(IServiceCollection services)
     {
-        builder.UseEnvironment("Development");
-        builder.ConfigureServices(services =>
-        {
-            services.RemoveAll<ICourseRepository>();
-            services.AddSingleton<ICourseRepository>(Repository);
-        });
+        services.RemoveAll<ICourseRepository>();
+        services.AddSingleton<ICourseRepository>(Repository);
     }
 }

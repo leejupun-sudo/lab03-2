@@ -1,13 +1,11 @@
 using CMS.API.Repositories;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace CMS.API.Tests;
 
 /// <summary>Hosts the API with <see cref="ILookupRepository"/> swapped for an in-memory fake.</summary>
-public class LookupApiFactory : WebApplicationFactory<Program>
+public class LookupApiFactory : ApiFactory
 {
     public FakeLookupRepository Repository { get; } = new FakeLookupRepository()
         .SeedUser("helen", "helen")
@@ -52,13 +50,9 @@ public class LookupApiFactory : WebApplicationFactory<Program>
         .SeedPromotion2(3393, "20251219_GoogleAIseminar", "Google AI工具一次掌握", "不需技術基礎", "2025-12-19")
         .SeedPromotion2(2000, "N8N-legacy", "舊的 n8n 活動", "大寫代碼", "2026-01-05");
 
-    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    protected override void ConfigureFakes(IServiceCollection services)
     {
-        builder.UseEnvironment("Development");
-        builder.ConfigureServices(services =>
-        {
-            services.RemoveAll<ILookupRepository>();
-            services.AddSingleton<ILookupRepository>(Repository);
-        });
+        services.RemoveAll<ILookupRepository>();
+        services.AddSingleton<ILookupRepository>(Repository);
     }
 }

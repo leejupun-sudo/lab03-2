@@ -1,11 +1,23 @@
 using CMS.API.Models;
 using CMS.API.Repositories;
+using CMS.API.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CMS.API.Controllers;
 
-/// <summary>角色 AppRole CRUD.</summary>
+/// <summary>角色 AppRole CRUD — 僅限 Admin.</summary>
+/// <remarks>
+/// 這道角色檢查是整組檢查裡最不能少的一個: <see cref="AppRoleRequest.UserIds"/> 會經由
+/// <c>AppRoleRepository.SyncUserRolesAsync</c> 把該角色的整份 <c>AppUserRole</c> 名單刪掉重寫,
+/// 所以一個沒有守住的 <c>PUT /api/app-roles</c> 就是「把自己加進 Admin」的一次性入口 —
+/// 它能繞過所有其他 controller 上的 <c>[Authorize(Roles = "Admin")]</c>。
+/// <para>
+/// 因此本檔案與 <c>AppUsersController</c> 的檢查必須在同一次修改裡一起加上, 不能分兩次。
+/// </para>
+/// </remarks>
 [ApiController]
+[Authorize(Roles = AppRoles.Admin)]
 [Route("api/app-roles")]
 [Produces("application/json")]
 public class AppRolesController : ControllerBase

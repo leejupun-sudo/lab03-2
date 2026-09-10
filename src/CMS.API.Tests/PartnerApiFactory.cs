@@ -1,6 +1,4 @@
 using CMS.API.Repositories;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -10,7 +8,7 @@ namespace CMS.API.Tests;
 /// Hosts the real API pipeline with the SQL-backed repository swapped for
 /// <see cref="FakePartnerRepository"/>, so the endpoint tests need no database.
 /// </summary>
-public class PartnerApiFactory : WebApplicationFactory<Program>
+public class PartnerApiFactory : ApiFactory
 {
     // The seed is chosen so every rule the spec records is actually exercised:
     //
@@ -31,13 +29,9 @@ public class PartnerApiFactory : WebApplicationFactory<Program>
         // No extension — 17 of the 62 non-null live values look like this.
         .Seed("Aruba", "Aruba", displayOrder: 3, imageFilename: "Splunk");
 
-    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    protected override void ConfigureFakes(IServiceCollection services)
     {
-        builder.UseEnvironment("Development");
-        builder.ConfigureServices(services =>
-        {
-            services.RemoveAll<IPartnerRepository>();
-            services.AddSingleton<IPartnerRepository>(Repository);
-        });
+        services.RemoveAll<IPartnerRepository>();
+        services.AddSingleton<IPartnerRepository>(Repository);
     }
 }

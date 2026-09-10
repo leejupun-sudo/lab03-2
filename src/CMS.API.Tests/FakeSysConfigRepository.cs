@@ -11,10 +11,14 @@ public class FakeSysConfigRepository : ISysConfigRepository
 {
     public const string DefaultPassword = "P@ssw0rd!";
 
+    /// <summary>JWT signing key — 33 characters, comfortably over the 32-byte HMAC-SHA256 floor.</summary>
+    public const string SymmetricSecurityKey = "test-signing-key-0123456789abcdef";
+
     public AppConfig? Config { get; set; } = new()
     {
         DefaultPassword = DefaultPassword,
-        EnforcePasswordPolicy = true
+        EnforcePasswordPolicy = true,
+        SymmetricSecurityKey = SymmetricSecurityKey
     };
 
     public Task<AppConfig?> GetAppConfigAsync(CancellationToken cancellationToken = default) =>

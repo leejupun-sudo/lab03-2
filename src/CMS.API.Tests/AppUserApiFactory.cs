@@ -1,6 +1,4 @@
 using CMS.API.Repositories;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -8,10 +6,10 @@ namespace CMS.API.Tests;
 
 /// <summary>
 /// Hosts the real API pipeline with the SQL-backed repositories swapped for
-/// <see cref="FakeAppUserRepository"/> and <see cref="FakeSysConfigRepository"/>, so the
-/// endpoint tests need no database and the default password is a known constant.
+/// <see cref="FakeAppUserRepository"/>, so the endpoint tests need no database. The inherited
+/// <see cref="ApiFactory.SysConfig"/> fake also makes the default password a known constant.
 /// </summary>
-public class AppUserApiFactory : WebApplicationFactory<Program>
+public class AppUserApiFactory : ApiFactory
 {
     // Seeded out of UserId order so `ORDER BY UserId` is actually exercised:
     //
@@ -25,17 +23,9 @@ public class AppUserApiFactory : WebApplicationFactory<Program>
         .Seed("helen", "Helen", isActive: false, passwordUpdatedTime: new DateTime(2026, 3, 1, 9, 30, 0), "User")
         .Seed("Jenny_Tsao", "Helen", isActive: true, passwordUpdatedTime: null);
 
-    public FakeSysConfigRepository SysConfig { get; } = new();
-
-    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    protected override void ConfigureFakes(IServiceCollection services)
     {
-        builder.UseEnvironment("Development");
-        builder.ConfigureServices(services =>
-        {
-            services.RemoveAll<IAppUserRepository>();
-            services.AddSingleton<IAppUserRepository>(Repository);
-            services.RemoveAll<ISysConfigRepository>();
-            services.AddSingleton<ISysConfigRepository>(SysConfig);
-        });
+        services.RemoveAll<IAppUserRepository>();
+        services.AddSingleton<IAppUserRepository>(Repository);
     }
 }
