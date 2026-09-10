@@ -1,0 +1,106 @@
+<form [formGroup]="form" (ngSubmit)="save()">
+  <div class="cms-card cms-page-header">
+    <div class="cms-page-header__titles">
+      <h1 class="cms-page-header__title" data-testid="form-title">{{ title }}</h1>
+    </div>
+
+    <div class="cms-page-header__actions">
+      <p-button
+        type="button"
+        label="取消"
+        icon="pi pi-times"
+        severity="secondary"
+        [text]="true"
+        (onClick)="cancel()"
+      />
+      <p-button
+        type="submit"
+        label="儲存"
+        icon="pi pi-check"
+        [loading]="saving()"
+        data-testid="save-user"
+      />
+    </div>
+  </div>
+
+  <div class="cms-card">
+    <div class="cms-card__body">
+      <h2 class="cms-card__title">使用者資料</h2>
+      @if (!isEdit) {
+        <p class="cms-field__hint cms-form-note" data-testid="default-password-note">
+          新帳號的密碼將設為系統預設密碼；建立後可在明細頁重設。
+        </p>
+      }
+
+      <div class="cms-field">
+        <label class="cms-field__label" for="userId">
+          帳號 <span class="cms-field__required">*</span>
+        </label>
+        <input
+          pInputText
+          id="userId"
+          formControlName="userId"
+          placeholder="請輸入帳號"
+          autocomplete="off"
+          data-testid="input-user-id"
+        />
+        @if (isEdit) {
+          <small class="cms-field__hint">帳號為角色關聯的鍵值，建立後不可變更。</small>
+        }
+        @if (isInvalid('userId')) {
+          <small class="cms-field__error" data-testid="error-user-id">帳號為必填。</small>
+        }
+      </div>
+
+      <div class="cms-field">
+        <label class="cms-field__label" for="userName">
+          姓名 <span class="cms-field__required">*</span>
+        </label>
+        <input
+          pInputText
+          id="userName"
+          formControlName="userName"
+          autocomplete="off"
+          data-testid="input-user-name"
+        />
+        @if (isInvalid('userName')) {
+          <small class="cms-field__error" data-testid="error-user-name">姓名為必填。</small>
+        }
+      </div>
+
+      <div class="cms-field">
+        <div class="cms-flag">
+          <p-checkbox
+            inputId="isActive"
+            formControlName="isActive"
+            [binary]="true"
+            data-testid="input-is-active"
+          />
+          <label for="isActive">啟用</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cms-card">
+    <div class="cms-card__body">
+      <h2 class="cms-card__title">角色</h2>
+
+      <div class="cms-field">
+        <p-multiselect
+          inputId="roleIds"
+          formControlName="roleIds"
+          optionLabel="label"
+          optionValue="roleId"
+          placeholder="選擇角色（可複選）"
+          appendTo="body"
+          [options]="roles()"
+          [filter]="true"
+          [showClear]="true"
+          [maxSelectedLabels]="9999"
+          data-testid="input-roles"
+        />
+      </div>
+    </div>
+  </div>
+</form>

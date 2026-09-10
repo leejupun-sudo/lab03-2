@@ -1,0 +1,157 @@
+<div class="cms-card cms-page-header">
+  <div class="cms-page-header__titles">
+    <h1 class="cms-page-header__title">上稿作業 FeaturedPromoItem</h1>
+    <span class="cms-page-header__subtitle">首頁每日、每據點三個時段的促銷活動</span>
+  </div>
+
+  <div class="cms-page-header__actions cms-week-nav">
+    <p-button
+      icon="pi pi-angle-double-left"
+      severity="secondary"
+      [text]="true"
+      [rounded]="true"
+      pTooltip="上一週"
+      data-testid="prev-week"
+      (onClick)="previousWeek()"
+    />
+    <span class="cms-week-nav__label" data-testid="week-label">{{ weekLabel() }}</span>
+    <p-button
+      icon="pi pi-angle-double-right"
+      severity="secondary"
+      [text]="true"
+      [rounded]="true"
+      pTooltip="下一週"
+      data-testid="next-week"
+      (onClick)="nextWeek()"
+    />
+    <p-button
+      label="本週"
+      severity="secondary"
+      size="small"
+      [outlined]="true"
+      data-testid="this-week"
+      (onClick)="thisWeek()"
+    />
+  </div>
+</div>
+
+<div class="cms-card">
+  <p-tabs [value]="trainingCenterPkid() ?? ''" (valueChange)="onTabChange($event)">
+    <p-tablist>
+      @for (center of trainingCenters(); track center.pkid) {
+        <p-tab [value]="center.pkid" data-testid="tab-training-center">{{ center.label }}</p-tab>
+      }
+    </p-tablist>
+  </p-tabs>
+
+  <div class="cms-week-grid" [class.cms-week-grid--loading]="loading()" data-testid="week-grid">
+    @for (day of days(); track day.iso) {
+      <div class="cms-day-header" data-testid="day-header">{{ day.label }}</div>
+
+      @for (cell of day.slots; track cell.slot) {
+        @if (isEditing(day, cell)) {
+          <div class="cms-slot-row cms-slot-row--editing" data-testid="slot-row">
+            <span class="cms-slot-row__slot">{{ cell.slot }}</span>
+            <div class="cms-slot-row__form">
+              <app-featured-promo-item-form
+                [context]="contextFor(day, cell)"
+                [item]="editing()?.item ?? null"
+                [initial]="editing()?.paste ?? null"
+                (saved)="onSaved()"
+                (cancelled)="onCancelled()"
+              />
+            </div>
+          </div>
+        } @else {
+          <div
+            class="cms-slot-row"
+            [class.cms-slot-row--empty]="!cell.item"
+            data-testid="slot-row"
+            [attr.data-slot]="cell.slot"
+            [attr.data-date]="day.iso"
+          >
+            <span class="cms-slot-row__slot">{{ cell.slot }}</span>
+
+            <span class="cms-slot-row__actions">
+              <p-button
+                icon="pi pi-plus"
+                severity="secondary"
+                size="small"
+                [text]="true"
+                [rounded]="true"
+                pTooltip="往後移一格 (+)"
+                [disabled]="!cell.item || cell.slot >= slotCount"
+                data-testid="move-down"
+                (onClick)="cell.item && moveDown(cell.item)"
+              />
+              <p-button
+                icon="pi pi-minus"
+                severity="secondary"
+                size="small"
+                [text]="true"
+                [rounded]="true"
+                pTooltip="往前移一格 (−)"
+                [disabled]="!cell.item || cell.slot <= 1"
+                data-testid="move-up"
+                (onClick)="cell.item && moveUp(cell.item)"
+              />
+              <p-button
+                icon="pi pi-pencil"
+                severity="info"
+                size="small"
+                [text]="true"
+                [rounded]="true"
+                [pTooltip]="cell.item ? '編輯' : '新增'"
+                data-testid="edit-item"
+                (onClick)="edit(day, cell)"
+              />
+              @if (cell.item) {
+                <p-button
+                  icon="pi pi-copy"
+                  severity="help"
+                  size="small"
+                  [text]="true"
+                  [rounded]="true"
+                  pTooltip="複製"
+                  data-testid="copy-item"
+                  (onClick)="copy(cell.item)"
+                />
+                <p-button
+                  icon="pi pi-trash"
+                  severity="danger"
+                  size="small"
+                  [text]="true"
+                  [rounded]="true"
+                  pTooltip="刪除"
+                  data-testid="delete-item"
+                  (onClick)="confirmDelete(cell.item)"
+                />
+              } @else if (clipboard()) {
+                <p-button
+                  icon="pi pi-clipboard"
+                  severity="help"
+                  size="small"
+                  [text]="true"
+                  [rounded]="true"
+                  pTooltip="貼上"
+                  data-testid="paste-item"
+                  (onClick)="paste(day, cell)"
+                />
+              }
+            </span>
+
+            <span class="cms-slot-row__cell cms-slot-row__code" data-testid="cell-promo-code">
+              {{ cell.item?.promoCode ?? '' }}
+            </span>
+            <span class="cms-slot-row__cell cms-slot-row__topic" data-testid="cell-topic">
+              {{ cell.item?.topic ?? '' }}
+            </span>
+            <span class="cms-slot-row__cell cms-slot-row__description" data-testid="cell-description">
+              {{ cell.item?.description ?? '' }}
+            </span>
+          </div>
+        }
+      }
+    }
+  </div>
+</div>

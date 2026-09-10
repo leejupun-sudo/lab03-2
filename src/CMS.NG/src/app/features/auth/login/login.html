@@ -1,0 +1,59 @@
+<div class="cms-login">
+  <form class="cms-login__card cms-card" [formGroup]="form" (ngSubmit)="submit()">
+    <div class="cms-login__brand">
+      <span class="cms-login__brand-mark">UWA</span>
+      <h1 class="cms-login__title">後台管理系統</h1>
+      <p class="cms-login__subtitle">請輸入帳號密碼登入</p>
+    </div>
+
+    <div class="cms-field">
+      <label class="cms-field__label" for="userId">
+        帳號 <span class="cms-field__required">*</span>
+      </label>
+      <input
+        pInputText
+        id="userId"
+        formControlName="userId"
+        autocomplete="username"
+        placeholder="請輸入帳號"
+        data-testid="input-user-id"
+      />
+      @if (isInvalid('userId')) {
+        <small class="cms-field__error" data-testid="error-user-id">帳號為必填。</small>
+      }
+    </div>
+
+    <div class="cms-field">
+      <label class="cms-field__label" for="password">
+        密碼 <span class="cms-field__required">*</span>
+      </label>
+      <p-password
+        inputId="password"
+        formControlName="password"
+        autocomplete="current-password"
+        placeholder="請輸入密碼"
+        [feedback]="false"
+        [toggleMask]="true"
+        [fluid]="true"
+        data-testid="input-password"
+      />
+      @if (isInvalid('password')) {
+        <small class="cms-field__error" data-testid="error-password">密碼為必填。</small>
+      }
+    </div>
+
+    @if (errorMessage()) {
+      <p class="cms-login__error" role="alert" data-testid="login-error">{{ errorMessage() }}</p>
+    }
+
+    <p-button
+      type="submit"
+      label="登入"
+      icon="pi pi-sign-in"
+      styleClass="cms-login__submit"
+      [loading]="submitting()"
+      [fluid]="true"
+      data-testid="submit-login"
+    />
+  </form>
+</div>

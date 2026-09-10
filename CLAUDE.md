@@ -1,284 +1,186 @@
 # CLAUDE.md
 
-Guidance for Claude Code when working in this repository.
+Guidance for Claude Code in this repository. This file holds only what every session
+needs. Longer material lives in `docs/claude/` — read the file for the task **before**
+starting it; do not guess at its contents:
+
+| Read when you are…                                            | File                              |
+| ------------------------------------------------------------- | --------------------------------- |
+| adding or scaffolding a feature, or running `/crud`           | `docs/claude/adding-a-feature.md` |
+| writing a repository, delete guard, or `*ExistsAsync`         | `docs/claude/schema-traps.md`     |
+| writing or changing xUnit / Karma tests                       | `docs/claude/testing.md`          |
+| changing an existing feature (its non-obvious decisions)      | `docs/claude/features.md`         |
 
 ## What this is
 
 A CMS admin app generated **from the SQL Server schema**, not from an ORM model.
 `database/*.sql` is the source of truth for every entity; `spec/code-gen.convention.md`
-is the source of truth for how a table becomes code. Read both before adding a feature.
+is the source of truth for how a table becomes code.
 
-| Path                | Contents                                                        |
-| ------------------- | --------------------------------------------------------------- |
-| `database/*.sql`    | Table DDL — `auth.sql`, `admin.sql`, `course.sql`, `promotion.sql` |
-| `spec/`             | Codegen convention, feature-spec template, two worked spec samples, UI mockups |
-| `spec/{sub-system}/`| Real per-table build specs — `admin/PublishStatus.md`, `course/CourseGroup.md` |
-| `src/CMS.API`       | .NET 9 Web API, Dapper (no EF), port 5000                        |
-| `src/CMS.API.Tests` | xUnit endpoint tests                                             |
-| `src/CMS.NG`        | Angular 20 standalone + PrimeNG 20, port 4200                     |
+| Path                 | Contents                                                          |
+| -------------------- | ----------------------------------------------------------------- |
+| `database/*.sql`     | Table DDL — `auth.sql`, `admin.sql`, `course.sql`, `promotion.sql` |
+| `spec/`              | Codegen convention, feature-spec template, two sample specs, UI mockups |
+| `spec/{sub-system}/` | Per-table build specs (`auth/`, `admin/`, `course/`, `promotion/`) |
+| `custom/{Table}/`    | Customer-supplied UI specs + mockups a build spec is written *from* |
+| `docs/claude/`       | Reference notes for Claude (table above)                           |
+| `src/CMS.API`        | .NET 9 Web API, Dapper (no EF), port 5000                          |
+| `src/CMS.API.Tests`  | xUnit endpoint tests                                               |
+| `src/CMS.NG`         | Angular 20 standalone + PrimeNG 20, port 4200                      |
 
-`README.md` documents how to run and configure things for a human; this file covers
-what to know before changing code.
+`README.md` is for humans running the app. Implemented features: AppRole, AppUser,
+PublishStatus, CourseGroup, Partner, Course, FeaturedPromoItem. Plus three non-CRUD ones:
+`POST /api/auth/login` (spec `spec/auth/Login.md`); JWT authorization end-to-end — every endpoint
+but login requires a bearer token, and Angular has a login page, an HTTP interceptor, a route
+guard and a role-gated sidebar (spec `spec/auth/Authorization.md`); and 我的帳號 My Profile —
+`PUT /api/auth/profile` plus the `/my-profile` page, where a signed-in user renames themselves
+(spec `spec/auth/MyProfile.md`).
 
 ## Environment gotchas (Windows)
 
-These cost time if rediscovered — they are properties of this machine, not the repo.
+Properties of this machine, not the repo — they cost time if rediscovered.
 
-- **Node is not on PATH.** Prefix commands: `$env:PATH = "C:\Program Files\nodejs;$env:PATH"`.
-- **`Start-Process npx` fails** with "%1 is not a valid Win32 application". To run the
-  dev server detached, invoke the CLI through node:
-  `Start-Process "C:\Program Files\nodejs\node.exe" -ArgumentList "node_modules\@angular\cli\bin\ng.js","serve"`.
-- **Headless Karma needs `$env:CHROME_BIN`** = `C:\Program Files\Google\Chrome\Application\chrome.exe`.
-- **`gh` is not on PATH** but is installed at `C:\Program Files\GitHub CLI\gh.exe` — invoke it
-  by full path. It is authenticated as `leejupun-sudo` with `repo` + `workflow` scopes.
-- **Two .NET SDKs are installed (9.0.316 and 10.0.302).** `src/global.json` pins 9 so
-  `dotnet new sln` yields a classic `.sln` (SDK 10 defaults to `.slnx`) and everything
-  targets `net9.0`. Don't remove it.
-- **Bash heredocs mangle backslash escapes.** Writing `appsettings.json` via
-  `cat <<'EOF'` collapsed `\\SQLEXPRESS` to `\SQLEXPRESS` and produced invalid JSON.
-  Use the Write tool for JSON/SQL content containing escapes.
-- Chinese output from `dotnet` is expected — the CLI is localised zh-TW.
-- **`python` on PATH is the WindowsApps stub** — it exits silently doing nothing, so a
-  heredoc script "succeeds" without running. Use the Edit tool or PowerShell instead.
-- **`sqlcmd` mangles Chinese on the terminal** (and `-u`/`-o` trip over `-E`). For probes
-  that need readable `nvarchar` values, use `System.Data.SqlClient` from PowerShell:
+- **Node is not on PATH.** Prefix: `$env:PATH = "C:\Program Files\nodejs;$env:PATH"`.
+- **`Start-Process npx` fails** ("%1 is not a valid Win32 application"). Run the CLI via
+  node: `Start-Process "C:\Program Files\nodejs\node.exe" -ArgumentList "node_modules\@angular\cli\bin\ng.js","serve"`.
+- **Headless Karma needs** `$env:CHROME_BIN = "C:\Program Files\Google\Chrome\Application\chrome.exe"`.
+- **`gh` is not on PATH**: `C:\Program Files\GitHub CLI\gh.exe` (authed as `leejupun-sudo`,
+  `repo` + `workflow`).
+- **Two .NET SDKs (9 and 10).** `src/global.json` pins 9 — keep it (classic `.sln`, `net9.0`).
+- **`python` on PATH is the WindowsApps stub** — exits silently. Use Edit or PowerShell.
+- **Bash heredocs mangle backslashes** (`\\SQLEXPRESS` → `\SQLEXPRESS`). Use the Write tool
+  for JSON/SQL with escapes.
+- **Bash tool output is capped (~30 KB)** — use the Read tool for large files.
+- **`dotnet` output is zh-TW** — expected.
+- **`sqlcmd` mangles Chinese** (and `-u`/`-o` trip over `-E`). Numeric probes:
+  `sqlcmd -S .\SQLEXPRESS -d CMS -E -C -h -1 -W`. Readable `nvarchar`: PowerShell
   `New-Object System.Data.SqlClient.SqlConnection("Server=.\SQLEXPRESS;Database=CMS;Integrated Security=true;TrustServerCertificate=true")`.
-  Numeric probes are fine through `sqlcmd -S .\SQLEXPRESS -d CMS -E -C -h -1 -W`.
+- **Kill `dotnet run` when done** — a surviving `CMS.API.exe` locks the output and the next
+  build fails with MSB3027.
 
 ## Commands
 
 ```powershell
-# Backend
-cd src; dotnet build CMS.sln; dotnet test CMS.sln
-
-# Frontend (with the PATH prefix above)
-cd src\CMS.NG
-npx ng build                                          # production
-npx ng test --watch=false --browsers=ChromeHeadless   # single CI run
-npm start                                             # dev server, port 4200
+cd src; dotnet build CMS.sln; dotnet test CMS.sln          # backend
+cd src\CMS.NG                                                # frontend (PATH prefix above)
+npx ng build                                                 # production
+npx ng test --watch=false --browsers=ChromeHeadless          # single CI run
+npm start                                                    # dev server, port 4200
 ```
 
-The API talks to a **real local SQL Server** (`.\SQLEXPRESS`, database `CMS`) that
-already contains data. Read-only probes are fine; do not run INSERT/UPDATE/DELETE
-against it to "verify" an endpoint without asking first — the xUnit suite covers
-writes with an in-memory repository instead.
+The API talks to a **real local SQL Server** (`.\SQLEXPRESS`, database `CMS`, compat level
+100) with live data. Read-only probes are fine and expected; **do not INSERT/UPDATE/DELETE**
+to "verify" an endpoint without asking — the xUnit suite covers writes with in-memory fakes.
 
 ## Backend conventions
 
-- **Dapper only.** No EF, no migrations. Repositories take `IDbConnectionFactory` and
-  open a connection per method.
-- **Routes** are kebab-plural: `/api/app-roles`, `/api/lookups/app-users`.
-  `PUT` takes the pkid from the body and has no route param.
-- Repository methods are async and take a `CancellationToken`; pass it through
-  Dapper's `CommandDefinition`.
-- N-N junctions sync with **delete-then-reinsert inside one transaction**.
-- `nchar(n)` columns need `RTRIM()` in every SELECT. `DateOnly`/`TimeOnly` columns rely
-  on the handlers in `Data/DapperTypeHandlers.cs`, registered at the top of `Program.cs`.
-- Alias FK columns in SELECT (`c.Partner_pkid AS PartnerPkid`) so Dapper maps them.
-- Duplicate natural keys return `409` with a `ProblemDetails` body, not `500`.
-
-### Four things the schema will not tell you — check the live DB first
-
-Read-only probes against `.\SQLEXPRESS` are cheap and have caught a real bug in every
-feature so far. Run them before writing the repository, not after.
-
-- **A table that is an FK target needs a delete guard.** No table here declares
-  `ON DELETE`, so deleting a referenced row raises an FK violation — a `500`, which the
-  rule above forbids. Carry usage-count subqueries in every SELECT and gate `DELETE`
-  behind an `IsInUseAsync`, returning `409`. `PublishStatus`, `CourseGroup` and `Partner`
-  all do this; copy any of them (`Partner` is the five-count example).
-- **Do not assume a "name" column is unique.** `CourseGroup.Description` has no `UNIQUE`
-  constraint and the live table holds duplicates (215 rows, 213 distinct). Adding the
-  usual duplicate check there would contradict the schema *and* make the existing twin
-  rows uneditable — each would 409 against its own duplicate. Verify with
-  `SELECT COUNT(DISTINCT col), COUNT(*)` before writing a `*ExistsAsync`.
-- **Not every `pkid` is `IDENTITY`.** `PublishStatus.pkid` is a plain `tinyint`: the
-  client supplies it on create, `INSERT` writes it explicitly, there is no
-  `SCOPE_IDENTITY()`, and a duplicate is a `409`. Where the PK *is* IDENTITY, cast
-  `SCOPE_IDENTITY()` to the column's own type (`smallint` for `CourseGroup`, not `int`).
-
-- **A reference can exist with no `FOREIGN KEY` behind it.** `Seminar.Partner_pkid` points
-  at `Partner.pkid` across 364 live rows, but `sys.foreign_keys` returns **0** constraints
-  for `Seminar` — the DDL declares none. A guard built from the `.sql` files alone misses
-  it, and deleting a partner referenced only by `Seminar` succeeds, orphaning the rows
-  silently. That is not hypothetical: `Partner` 122 is exactly such a row. Enumerate
-  references with `sys.foreign_keys`, then also grep the DDL for `{Table}_pkid` columns the
-  constraint list does not cover.
-
-An FK-target PK is also **immutable** — never write it in `UPDATE`, and disable the
-control in the edit form. Same hazard as `AppRole.RoleId`.
-
-The distinct-vs-total probe cuts both ways: on `Partner` it rules a duplicate check *out*
-for `Name` (66 rows / 64 distinct) and *in* for `AppKey` (66/66), in the same table.
-
-### Junction table, or entity in its own right?
-
-"Two FK columns and a name containing the parent table" is not enough to call something
-an N-N junction. `PartnerCourseGroup` matches that pattern but has its own
-`pkid IDENTITY`, its own payload (`DisplayOrder`, `Description`), and — decisively —
-`Promotion2` holds an FK to *its* pkid. Delete-then-reinsert would hand every row a new
-pkid and orphan 387 live `Promotion2` rows. Before treating a table as a junction, check
-that nothing FKs to it and that it has no surrogate key of its own; a true junction here
-(`AppUserRole`, `CourseInCertification`) keys on the FK pair.
-
-### Testing the API
-
-`CMS.API.Tests` hosts the real pipeline with `WebApplicationFactory<Program>` and swaps
-only the repository under test for an in-memory fake. This exercises routing, model
-binding, DataAnnotations validation and JSON casing without a database. `Program.cs` ends
-with `public partial class Program;` to make that possible — keep it.
-
-One factory + one fake per feature (`AppRoleApiFactory`, `PublishStatusApiFactory`,
-`CourseGroupApiFactory`, `PartnerApiFactory`, plus `LookupApiFactory` for
-`LookupsController`). **Construct a
-fresh factory per test** — the fakes hold mutable state. Seed the fake with data that
-actually exercises the rules: a referenced row so the delete guard has something to block,
-and duplicate names where duplicates are legal.
-
-A fake must mirror the SQL, including its ordering — otherwise the test passes while the
-endpoint returns rows in the wrong order.
-
-**Computed C# properties need a raw-JSON assertion.** `LookupItem`'s `Label` is a
-`get`-only expression, so `ReadFromJsonAsync` recomputes it client-side and an equality
-check proves nothing. Parse with `JsonDocument` and read `.GetProperty("label")` to prove
-the value actually reaches the Angular `optionLabel="label"` binding.
+- **Dapper only.** No EF, no migrations. Repositories take `IDbConnectionFactory` and open a
+  connection per method; methods are async, take a `CancellationToken`, and pass it through
+  `CommandDefinition`. Multi-statement writes use one transaction.
+- **Routes** are kebab-plural (`/api/app-roles`, `/api/lookups/app-users`). `PUT` takes the
+  pkid from the body, no route param. Register every repository in `Program.cs`.
+- Alias FK columns in SELECT (`c.Partner_pkid AS PartnerPkid`); JOIN FK *labels* onto the row
+  as flat columns so lists need no lookup calls. `nchar(n)` needs `RTRIM()`. `DateOnly` /
+  `TimeOnly` use the handlers in `Data/DapperTypeHandlers.cs`.
+- **Foreseeable conflicts are `409` + `ProblemDetails`, never `500`**: duplicate natural keys,
+  taken unique-index slots, and deleting an FK target (`IsInUseAsync` guard with usage
+  counts in every SELECT). An FK-target PK is immutable — never in `UPDATE`.
+- N-N junctions sync delete-then-reinsert inside the parent transaction — but confirm the
+  table *is* a junction first (`docs/claude/schema-traps.md`).
+- **Every controller needs a token.** `app.MapControllers().RequireAuthorization()` covers the
+  whole surface; `AuthController.Login` holds the only `[AllowAnonymous]` — **on the action, not
+  the class**, or it would re-open `PUT /api/auth/profile` beside it. An endpoint that acts on
+  "the current user" takes the account from `User.FindFirstValue("userId")`, never from the body,
+  and its request DTO simply has no property for one. The bearer signing key is
+  re-read from `SysConfig.appConfig.symmetricSecurityKey` **per request**, never from
+  appsettings. Details and traps: `docs/claude/features.md`.
+- **系統管理 needs the Admin role on top of that token.** `[Authorize(Roles = AppRoles.Admin)]`
+  on `AppUsersController`, `AppRolesController`, `PublishStatusesController`, and on the
+  `app-users` / `app-roles` **actions** of `LookupsController` (the rest of that class stays open —
+  the course forms need it). Content features are deliberately ungated. **Anything that assigns a
+  role must be gated in the same change as what the role protects**: `AppRoleRequest.UserIds`
+  rewrites `AppUserRole`, so an ungated `PUT /api/app-roles` is a one-request self-grant of Admin.
+- **The account is re-read on every authenticated request** (`Security/ActiveAccountEvents.cs`),
+  so deactivating or deleting a user takes effect immediately instead of whenever their 24-hour
+  token expires. Missing or `IsActive = 0` → `401` (the credential is finished), never `403`.
+  Costs one clustered-PK seek per request; do not remove it to save that.
+- **Probe the live DB before writing a repository.** The DDL omits unique indexes,
+  unconstrained references, cascades and non-IDENTITY keys; every feature so far hit one.
+  Checklist and cases: `docs/claude/schema-traps.md`.
 
 ## Frontend conventions
 
-- **Standalone components only**, no NgModules. Signals for component state;
-  Reactive Forms for the form pages.
-- Feature layout is `features/{table-plural}/{table}-list|-detail|-form/`.
-- Routes are lazy (`loadComponent`) and registered in `app.routes.ts`.
-- Import config through the `@env` alias, never a relative path into `environments/`.
-  Aliases: `@env`, `@env/*`, `@app/*`, `@core/*`, `@features/*` (`tsconfig.json`).
-- **No dev-server proxy.** `environment.development.ts` points at
-  `http://localhost:5000/api`; the production `environment.ts` uses `/api`.
-- List pages persist `{entity}-list-filters`, `-sort`, `-page` to session storage.
-- PrimeNG: `p-select`/`p-multiselect` in overlays need `appendTo="body"`; add
-  `[virtualScroll]` past ~100 options.
-- Shared page primitives (`.cms-card`, `.cms-page-header`, `.cms-field`,
-  `.cms-detail-grid`) live in `src/styles.scss`. Reuse them rather than restyling
-  per feature; the theme preset is in `app.config.ts`.
-- Delete confirmations use the convention wording:
-  ``確定要刪除主代碼 <b>${item.pkid}</b>「${item.<nameField>}」？``
+- **Standalone components only**; signals for state, Reactive Forms for forms. Feature
+  layout `features/{table-plural}/{table}-list|-detail|-form/`; lazy `loadComponent` routes
+  in `app.routes.ts` (`/new` before `/:id`); nav entries in the `navGroups` signal in `app.ts`.
+- Import config through `@env` (aliases: `@env`, `@app/*`, `@core/*`, `@features/*`).
+  **No dev-server proxy** — `environment.development.ts` points at `http://localhost:5000/api`.
+- List pages persist `{entity}-list-filters`, `-sort`, `-page` to session storage and honour
+  incoming query params over the saved filter.
+- PrimeNG: overlays need `appendTo="body"`; `[filter]` past ~10 options, `[virtualScroll]`
+  past ~100; tri-state filters use `p-select`, not a checkbox. Autocomplete endpoints (capped
+  server search) must not be bound to a `p-select`.
+- **Inline cell editing is hand-rolled, not `pEditableColumn`** (Course list is the one
+  page with it). That directive opens on a *single* click and its only validity check is a
+  synchronous `.ng-invalid` scan, so it cannot express dblclick-to-open or an async
+  validated save. Pattern: dblclick opens, blur commits, an invalid value keeps the cell
+  open, and the row is never mutated until the write resolves — so closing the editor *is*
+  the revert. An inline save that PUTs a parent with junctions must re-read the full row
+  first (`docs/claude/features.md`).
+- Auth: the profile lives in **session storage** (`cms-auth`), never local storage; one
+  interceptor attaches `Authorization: Bearer`, handles 401 (clearing all of session storage and
+  returning to `/login`) and 403 (a 權限不足 toast — the session stays, since signing in again
+  fixes nothing); one `authGuard` sits on the pathless parent wrapping every route, so new routes
+  are covered automatically, and an `adminGuard` sits on a second pathless parent around the
+  系統管理 branch. Both guards and the hidden sidebar group are **ergonomics, not the boundary** —
+  browser-side roles come from an unverified JWT decode; the API's `[Authorize(Roles)]` is what
+  enforces it. Default landing is `/featured-promo-items` (in `app.routes.ts` **and**
+  `login.ts` `DEFAULT_LANDING` — keep them equal), because 角色 is Admin-only now. The header user
+  chip links to `/my-profile`, a header link and deliberately *not* a sidebar entry. See
+  `docs/claude/features.md`.
+- **A CommonJS runtime dependency** (the first is `qrcode`) must be listed in
+  `angular.json` under `allowedCommonJsDependencies`, or every build warns.
+- Dates: `date` columns travel as `yyyy-MM-dd`; convert with `core/utils/date.util.ts`
+  (local components, never `toISOString()`).
+- Shared primitives (`.cms-card`, `.cms-page-header`, `.cms-field`, `.cms-detail-grid`) live
+  in `src/styles.scss`; theme preset in `app.config.ts`. Optional blank text is sent as `null`.
+- Delete confirmations: ``確定要刪除主代碼 <b>${item.pkid}</b>「${item.<nameField>}」？``
+- Mockups (`spec/*.png`, `custom/`) are style references; **the schema wins on content**
+  (nullability, uniqueness), and deviations from the house page shape are recorded in the spec.
 
-### Testing components
+## gstack
 
-Standard TestBed providers for a PrimeNG page:
-`provideRouter([])`, `provideNoopAnimations()`, `providePrimeNG({ theme: { preset: Aura } })`,
-`MessageService`, `ConfirmationService`, plus jasmine spies for the data services.
-Assert against `data-testid` attributes. Clear `sessionStorage` around list-page specs.
+Skill pack from [garrytan/gstack](https://github.com/garrytan/gstack) (MIT), installed at
+`~/.claude/skills/gstack`.
 
-## Feature: 角色 AppRole (implemented)
+- **All web browsing goes through the `/browse` skill from gstack.** Do not use the
+  `mcp__claude-in-chrome__*` tools directly.
 
-Sidebar **系統管理 Admin → 角色 AppRole**; routes `/app-roles`, `/app-roles/new`,
-`/app-roles/:id`, `/app-roles/:id/edit`.
+Available skills:
 
-Two schema decisions that are easy to get wrong:
+`/office-hours`, `/plan-ceo-review`, `/plan-eng-review`, `/plan-design-review`,
+`/design-consultation`, `/design-shotgun`, `/design-html`, `/review`, `/ship`,
+`/land-and-deploy`, `/canary`, `/benchmark`, `/browse`, `/connect-chrome`, `/qa`, `/qa-only`,
+`/design-review`, `/setup-browser-cookies`, `/setup-deploy`, `/setup-gbrain`, `/retro`,
+`/investigate`, `/document-release`, `/document-generate`, `/codex`, `/cso`, `/autoplan`,
+`/plan-devex-review`, `/devex-review`, `/careful`, `/freeze`, `/guard`, `/unfreeze`,
+`/gstack-upgrade`, `/learn`.
 
-- `AppRole` has **both** `pkid int IDENTITY` and a clustered primary key on
-  `RoleId nvarchar(200)`, which `AppUserRole` references by FK. The API addresses rows
-  by `pkid` (the 主代碼 column in the mockups).
-- **`RoleId` is immutable after creation** — `UPDATE` never writes it (the repository
-  re-reads it from the row to sync `AppUserRole`), and the edit form disables the
-  control. Changing it would orphan `AppUserRole` rows.
+## Skill routing
 
-`Description` is nullable in the schema, so the form treats it as optional and sends
-`null` when blank, even though the mockup draws a required asterisk. The UI PNGs in
-`spec/` are style references; the schema wins on content.
+When the user's request matches an available skill, invoke it via the Skill tool. When in doubt, invoke the skill.
 
-## Feature: 發布狀態 PublishStatus (implemented)
-
-Sidebar **系統管理 Admin → 發布狀態 PublishStatus**; routes under `/publish-statuses`.
-Spec: `spec/admin/PublishStatus.md`.
-
-- **`pkid` is `tinyint` with no `IDENTITY`** — the client picks it. `INSERT` writes it,
-  there is no `SCOPE_IDENTITY()`, and a duplicate is `409`. `0` is reserved as the
-  "not supplied" sentinel via `[Range(1, 255)]`; SQL would accept it, this is a
-  deliberate narrowing.
-- `Course` and `Promotion2` both FK to it, so `pkid` is immutable and `DELETE` is guarded.
-  Every live row is referenced — the guard is not theoretical.
-- The three `bit` flags (`IsDraft`/`IsPublished`/`IsDiscontinued`) are **independent**.
-  They happen to be mutually exclusive in the data, but no `CHECK` enforces it, so there
-  is no cross-field validator. Tri-state filters use `p-select`, not `p-checkbox` — a
-  checkbox cannot express "no filter".
-
-## Feature: 課程群組 CourseGroup (implemented)
-
-Sidebar **課程管理 Course → 課程群組 CourseGroup**; routes under `/course-groups`.
-Spec: `spec/course/CourseGroup.md`.
-
-- Two columns only: `pkid smallint IDENTITY` and `Description nvarchar(100) NOT NULL`.
-- **No duplicate check on `Description`** — see the backend-conventions note above.
-  The only `409` in this feature is the delete guard.
-- `PartnerCourseGroup` is **not** an N-N junction — see the junction note above.
-- Default sort is `Description ASC`: there is no `DisplayOrder` column and pkid order is
-  meaningless across 215 reference rows. This contradicts `spec/sample1.spec.md`, which
-  suggests `pkid ASC` for the dropdown; reconcile when the Course feature is built.
-- 215 lookup options is past the ~100 threshold, so consumers need `[filter]` and
-  `[virtualScroll]`.
-
-## Feature: 合作廠商 Partner (implemented)
-
-Sidebar **課程管理 Course → 合作廠商 Partner** (above CourseGroup); routes under `/partners`.
-Spec: `spec/course/Partner.md`.
-
-- `pkid smallint IDENTITY`, immutable — the most-referenced FK target in the schema.
-- **`Seminar` references it with no FK constraint.** `SeminarCount` is carried in every
-  SELECT and blocks `DELETE` alongside the four enforced references (Course, Certification,
-  PartnerCourseGroup, Promotion2). See the schema-traps note above; dropping it as
-  "redundant" reintroduces the bug.
-- **`Name` gets no duplicate check; `AppKey` does.** 66 rows / 64 distinct names
-  (「國際標準課程」 ×3) versus 66/66 distinct AppKeys. The AppKey 409 is an *application*
-  rule — no `UNIQUE` index backs it — so re-run the distinct probe before relying on it.
-- Default sort is `DisplayOrder ASC, Name ASC, pkid ASC`. All three keys are needed: 23 rows
-  share the `9999` "park at the end" sentinel and `Name` is not unique either, so without
-  `pkid` the order is undefined and paging is unstable.
-- **`ImageFilename` has no format guarantee** — 17 of the 62 non-null values carry no
-  extension at all (`Splunk`, `恆逸`, `轉職培訓`). No regex, no `<img src>`; it renders as
-  text and stores `null` when blank.
-- `PartnerLookup.Label` is `Name (AppKey)`, not bare `Name` — three rows share a name and
-  would otherwise render as indistinguishable dropdown options. This deviates from
-  `spec/sample1.spec.md`; reconcile when the Course feature is built. 66 options needs
-  `[filter]` but **not** `[virtualScroll]`.
-- The list page shows one summed **使用中** column; the detail page breaks the five counts
-  out separately. Link buttons are deferred — `/courses`, `/certifications`,
-  `/partner-course-groups`, `/promotion2s` and `/seminars` are all dead routes.
-
-## Gaps between the `/crud` skill and this codebase
-
-The skill's step list is not fully implementable here yet. Do not silently skip these —
-say so in the report.
-
-- **RowAudit does not exist.** The skill asks for a `RowAuditWriter` injected into every
-  repository and a `RowAuditBadgeComponent` in the detail/form toolbars. `admin.sql` has
-  a `RowAudit` *table*, but there is no C# writer and no Angular component, and no
-  implemented feature uses either. Building that infrastructure is separate work; until
-  then, follow the AppRole shape and note the omission.
-- **Primary-Foreign link buttons** need the child feature to exist first. `PublishStatus`,
-  `CourseGroup` and `Partner` all ship usage *counts* as plain numbers because `/courses`,
-  `/certifications`, `/promotion2s`, `/partner-course-groups` and `/seminars` are dead
-  routes. The specs record the routes and query-param names as the contract to build
-  against.
-- **The junction heuristic can be wrong** — see above.
-
-## Adding a feature
-
-1. Read the DDL, then **probe the live DB** for row counts, distinct-vs-total on any
-   candidate natural key, and which tables actually reference this one. See
-   *Three things the schema will not tell you*.
-2. Write `spec/{sub-system}/{Table}.md` from `spec/feature-spec.template.md`.
-   `spec/sample1.spec.md` (Course, FK+N-N heavy) and `spec/sample2.spec.md` (SkillTrain,
-   simpler) show the depth expected; `spec/admin/PublishStatus.md` and
-   `spec/course/CourseGroup.md` are real worked examples. Record every judgment call and
-   its reason — that is what the spec is for.
-3. Backend: models, `I{Table}Repository` + implementation, controller, then **register
-   the repository in `Program.cs`** — a missing registration only fails at request time.
-   Add a `GET /api/lookups/{plural}` if anything FKs to this table.
-4. Frontend: model + service in `core/`, three components under `features/`, four lazy
-   routes (`/new` before `/:id`), and a nav entry in the `navGroups` signal in `app.ts`.
-5. Add tests on both sides. Adding a nav entry breaks `app.spec.ts` if it asserts an
-   exact href list — update it in the same commit.
-6. Verify: `dotnet build`, `dotnet test`, `ng build`, `ng test`, then read-only probes of
-   the new endpoints against the live DB. **Kill the `dotnet run` process afterwards** —
-   a surviving `CMS.API.exe` locks the output file and the next build fails with MSB3027.
+Key routing rules:
+- Product ideas/brainstorming → invoke /office-hours
+- Strategy/scope → invoke /plan-ceo-review
+- Architecture → invoke /plan-eng-review
+- Design system/plan review → invoke /design-consultation or /plan-design-review
+- Full review pipeline → invoke /autoplan
+- Bugs/errors → invoke /investigate
+- QA/testing site behavior → invoke /qa or /qa-only
+- Code review/diff check → invoke /review
+- Visual polish → invoke /design-review
+- Ship/deploy/PR → invoke /ship or /land-and-deploy
+- Save progress → invoke /context-save
+- Resume context → invoke /context-restore
+- Author a backlog-ready spec/issue → invoke /spec

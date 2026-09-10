@@ -1,0 +1,91 @@
+<form [formGroup]="form" (ngSubmit)="save()" class="cms-inline-form" data-testid="inline-form">
+  <div class="cms-inline-form__header">
+    <span class="cms-inline-form__title" data-testid="form-title">{{ title }}</span>
+    <span class="cms-inline-form__context" data-testid="form-context">{{ contextLabel }}</span>
+  </div>
+
+  <div class="cms-field">
+    <label class="cms-field__label" for="promotion">
+      促銷代碼 PromoCode <span class="cms-field__required">*</span>
+    </label>
+    <p-autocomplete
+      inputId="promotion"
+      formControlName="promotion"
+      optionLabel="label"
+      placeholder="輸入促銷代碼查詢"
+      appendTo="body"
+      [suggestions]="suggestions()"
+      [forceSelection]="true"
+      [dropdown]="true"
+      [minLength]="1"
+      data-testid="input-promotion"
+      (completeMethod)="search($event)"
+      (onSelect)="onPromotionSelected($event)"
+    >
+      <ng-template #item let-promotion>
+        <div class="cms-promo-option">
+          <span class="cms-promo-option__code">{{ promotion.promoCode }}</span>
+          @if (promotion.topic) {
+            <span class="cms-promo-option__topic">{{ promotion.topic }}</span>
+          }
+        </div>
+      </ng-template>
+    </p-autocomplete>
+    <small class="cms-field__hint">從查詢結果選取；主題與說明為空白時會一併帶入活動的文字。</small>
+    @if (isInvalid('promotion')) {
+      <small class="cms-field__error" data-testid="error-promotion">
+        促銷代碼為必填，請從查詢結果中選取。
+      </small>
+    }
+  </div>
+
+  <div class="cms-field">
+    <label class="cms-field__label" for="topic">
+      主題 Topic <span class="cms-field__required">*</span>
+    </label>
+    <input pInputText id="topic" formControlName="topic" maxlength="100" data-testid="input-topic" />
+    @if (isInvalid('topic')) {
+      <small class="cms-field__error" data-testid="error-topic">主題為必填，且長度不可超過 100 字。</small>
+    }
+  </div>
+
+  <div class="cms-field">
+    <label class="cms-field__label" for="description">
+      說明 Description <span class="cms-field__required">*</span>
+    </label>
+    <textarea
+      pTextarea
+      id="description"
+      formControlName="description"
+      rows="2"
+      maxlength="300"
+      data-testid="input-description"
+    ></textarea>
+    @if (isInvalid('description')) {
+      <small class="cms-field__error" data-testid="error-description">
+        說明為必填，且長度不可超過 300 字。
+      </small>
+    }
+  </div>
+
+  <div class="cms-inline-form__actions">
+    <p-button
+      type="submit"
+      label="儲存"
+      icon="pi pi-check"
+      size="small"
+      [loading]="saving()"
+      data-testid="save-item"
+    />
+    <p-button
+      type="button"
+      label="取消"
+      icon="pi pi-times"
+      severity="secondary"
+      size="small"
+      [text]="true"
+      data-testid="cancel-item"
+      (onClick)="cancel()"
+    />
+  </div>
+</form>

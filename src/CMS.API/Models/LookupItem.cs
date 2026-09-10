@@ -21,6 +21,20 @@ public class AppUserLookup
     public string Label => $"{UserName} ({UserId})";
 }
 
+/// <summary>角色下拉選單項目 — value 為 RoleId (AppUserRole 儲存的是自然鍵, 不是 pkid).</summary>
+public class AppRoleLookup
+{
+    /// <summary>主代碼 — 讓消費端能連到 /app-roles/{pkid}.</summary>
+    public int Pkid { get; set; }
+
+    public string RoleId { get; set; } = string.Empty;
+
+    public string RoleName { get; set; } = string.Empty;
+
+    /// <summary>顯示標籤, 例: <c>Administrator (Admin)</c> — 與 <see cref="AppUserLookup.Label"/> 同形.</summary>
+    public string Label => $"{RoleName} ({RoleId})";
+}
+
 /// <summary>發布狀態下拉選單項目 — value 為 pkid.</summary>
 public class PublishStatusLookup
 {
@@ -60,4 +74,79 @@ public class PartnerLookup
     /// </para>
     /// </summary>
     public string Label => $"{Name} ({AppKey})";
+}
+
+/// <summary>認證下拉選單項目 — value 為 pkid.</summary>
+public class CertificationLookup
+{
+    public int Pkid { get; set; }
+
+    /// <summary>認證名稱 — 來源欄位是 nchar(100), SELECT 時已 RTRIM.</summary>
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>所屬原廠名稱 — JOIN Partner.Name.</summary>
+    public string PartnerName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 顯示標籤, 例: <c>FCP-PCS (Fortinet資安專家認證課程)</c>.
+    /// 39 個 Title 全部相異, 附上原廠是為了讓 <c>FCP-PCS</c> 這類代碼有脈絡, 不是為了消歧.
+    /// </summary>
+    public string Label => $"{Title} ({PartnerName})";
+}
+
+/// <summary>職務類別下拉選單項目 — value 為 pkid.</summary>
+public class JobCategoryLookup
+{
+    public short Pkid { get; set; }
+
+    public string Description { get; set; } = string.Empty;
+
+    /// <summary>顯示標籤 — 即類別名稱, 例: <c>資訊安全 Security</c>.</summary>
+    public string Label => Description;
+}
+
+/// <summary>課程下拉選單項目 — value 為 pkid. 線上約 1084 筆, 消費端需要 virtualScroll.</summary>
+public class CourseLookup
+{
+    public int Pkid { get; set; }
+
+    public string CourseId { get; set; } = string.Empty;
+
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>顯示標籤, 例: <c>PLF Oracle資料庫之PL／SQL基礎</c>.</summary>
+    public string Label => $"{CourseId} {Title}";
+}
+
+/// <summary>據點下拉／頁籤項目 — value 為 pkid. 線上 5 筆, 依 DisplayOrder 排序.</summary>
+public class TrainingCenterLookup
+{
+    public short Pkid { get; set; }
+
+    /// <summary>據點名稱 — nvarchar(10), 例: <c>台北</c>、<c>線上研討會</c>.</summary>
+    public string Name { get; set; } = string.Empty;
+
+    public string AppKey { get; set; } = string.Empty;
+
+    /// <summary>顯示標籤 — 即據點名稱; 5 筆全部相異, 不需要附 AppKey.</summary>
+    public string Label => Name;
+}
+
+/// <summary>
+/// 促銷活動 (Promotion2) 查詢項目 — value 為 pkid. 上稿表單以促銷代碼查詢後帶入 Promotion_pkid,
+/// 並以 Topic / Description 預填表單.
+/// </summary>
+public class Promotion2Lookup
+{
+    public int Pkid { get; set; }
+
+    /// <summary>促銷代碼 — 唯一 (IX_Promotion2_UniquePromoCode), 大小寫不分.</summary>
+    public string PromoCode { get; set; } = string.Empty;
+
+    public string Topic { get; set; } = string.Empty;
+
+    public string Description { get; set; } = string.Empty;
+
+    /// <summary>顯示標籤 — 即促銷代碼, 它本身就唯一.</summary>
+    public string Label => PromoCode;
 }

@@ -1,0 +1,75 @@
+<form [formGroup]="form" (ngSubmit)="save()">
+  <div class="cms-card cms-page-header">
+    <div class="cms-page-header__titles">
+      <h1 class="cms-page-header__title" data-testid="profile-title">我的帳號 My Profile</h1>
+    </div>
+
+    <div class="cms-page-header__actions">
+      <p-button
+        type="button"
+        label="還原"
+        icon="pi pi-undo"
+        severity="secondary"
+        [text]="true"
+        (onClick)="reset()"
+        data-testid="reset-profile"
+      />
+      <p-button
+        type="submit"
+        label="儲存"
+        icon="pi pi-check"
+        [loading]="saving()"
+        data-testid="save-profile"
+      />
+    </div>
+  </div>
+
+  <div class="cms-card">
+    <div class="cms-card__body">
+      <h2 class="cms-card__title">基本資料</h2>
+
+      <!-- 帳號 is the clustered PK and the AppUserRole FK target: read-only here and immutable
+           in the API, which takes it from the token rather than from anything on this page. -->
+      <div class="cms-field">
+        <span class="cms-field__label">帳號 UserId</span>
+        <p class="cms-field__readonly" data-testid="profile-user-id">{{ userId() }}</p>
+        <small class="cms-field__hint">帳號為登入鍵值，不可變更。</small>
+      </div>
+
+      <div class="cms-field">
+        <label class="cms-field__label" for="userName">
+          姓名 UserName <span class="cms-field__required">*</span>
+        </label>
+        <input
+          pInputText
+          id="userName"
+          formControlName="userName"
+          maxlength="200"
+          placeholder="請輸入姓名"
+          data-testid="input-user-name"
+        />
+        @if (isInvalid('userName')) {
+          <small class="cms-field__error" data-testid="error-user-name">姓名為必填。</small>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="cms-card">
+    <div class="cms-card__body">
+      <h2 class="cms-card__title">角色 Roles</h2>
+
+      @if (roles().length) {
+        <div class="cms-tags" data-testid="profile-roles">
+          @for (role of roles(); track role) {
+            <p-tag [value]="role" severity="secondary" />
+          }
+        </div>
+      } @else {
+        <p class="cms-empty" data-testid="profile-roles-empty">尚未指派角色。</p>
+      }
+
+      <small class="cms-field__hint">角色由系統管理者指派，無法在此修改。</small>
+    </div>
+  </div>
+</form>

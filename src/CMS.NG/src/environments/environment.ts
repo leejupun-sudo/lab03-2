@@ -7,4 +7,6 @@
 export const environment = {
   production: true,
   apiBaseUrl: '/api',
+  /** Public site the course QR codes point at. */
+  publicSiteBaseUrl: 'https://www.uuu.com.tw',
 };

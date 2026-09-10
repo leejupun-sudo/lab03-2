@@ -1,0 +1,97 @@
+<div class="cms-card cms-page-header">
+  <div class="cms-page-header__titles">
+    <h1 class="cms-page-header__title">使用者明細</h1>
+    @if (user(); as item) {
+      <span class="cms-page-header__subtitle">{{ item.userId }}</span>
+    }
+  </div>
+
+  <div class="cms-page-header__actions">
+    <p-button
+      label="返回"
+      icon="pi pi-arrow-left"
+      severity="secondary"
+      [text]="true"
+      (onClick)="goBack()"
+    />
+    @if (user(); as item) {
+      <p-button
+        label="重設密碼"
+        icon="pi pi-key"
+        severity="warn"
+        [outlined]="true"
+        [loading]="resetting()"
+        data-testid="reset-password"
+        (onClick)="confirmResetPassword()"
+      />
+      <p-button label="編輯" icon="pi pi-pencil" [routerLink]="['/app-users', item.pkid, 'edit']" />
+    }
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="cms-card">
+    <div class="cms-card__body cms-empty">載入中…</div>
+  </div>
+} @else if (user(); as item) {
+  <div class="cms-card">
+    <div class="cms-card__body">
+      <h2 class="cms-card__title">使用者資料</h2>
+
+      <dl class="cms-detail-grid">
+        <dt class="cms-detail-grid__label">主代碼</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-pkid">{{ item.pkid }}</dd>
+
+        <dt class="cms-detail-grid__label">帳號</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-user-id">{{ item.userId }}</dd>
+
+        <dt class="cms-detail-grid__label">姓名</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-user-name">{{ item.userName }}</dd>
+
+        <dt class="cms-detail-grid__label">啟用</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-is-active">
+          <p-tag
+            [value]="item.isActive ? '是' : '否'"
+            [severity]="item.isActive ? 'success' : 'secondary'"
+          />
+        </dd>
+
+        <dt class="cms-detail-grid__label">密碼更新時間</dt>
+        <dd class="cms-detail-grid__value" data-testid="detail-password-updated-time">
+          @if (item.passwordUpdatedTime) {
+            {{ item.passwordUpdatedTime + 'Z' | date: 'yyyy-MM-dd HH:mm' }}
+          } @else {
+            <span class="cms-empty">—</span>
+            <small class="cms-field__hint">尚未變更過密碼（仍為系統預設密碼）</small>
+          }
+        </dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="cms-card">
+    <div class="cms-card__body">
+      <h2 class="cms-card__title">角色（{{ item.roleCount }}）</h2>
+
+      @if (assignedRoles.length) {
+        <div class="cms-tags" data-testid="detail-roles">
+          @for (role of assignedRoles; track role.roleId) {
+            @if (role.pkid !== null) {
+              <a [routerLink]="['/app-roles', role.pkid]" class="cms-tag-link">
+                <p-tag [value]="role.label" severity="secondary" />
+              </a>
+            } @else {
+              <p-tag [value]="role.label" severity="secondary" />
+            }
+          }
+        </div>
+      } @else {
+        <p class="cms-empty" data-testid="detail-roles-empty">此使用者尚未指派角色。</p>
+      }
+    </div>
+  </div>
+} @else {
+  <div class="cms-card">
+    <div class="cms-card__body cms-empty" data-testid="detail-not-found">查無此使用者。</div>
+  </div>
+}

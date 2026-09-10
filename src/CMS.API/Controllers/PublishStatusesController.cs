@@ -1,11 +1,22 @@
 using CMS.API.Models;
 using CMS.API.Repositories;
+using CMS.API.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CMS.API.Controllers;
 
-/// <summary>發布狀態 PublishStatus CRUD.</summary>
+/// <summary>發布狀態 PublishStatus CRUD — 僅限 Admin.</summary>
+/// <remarks>
+/// 與使用者、角色同屬側邊欄的 系統管理 群組, 所以套同一道門檻。<c>PublishStatus</c> 是
+/// <c>Course</c> 與 <c>Promotion2</c> 的外鍵目標, 改動它會牽動已上架的內容。
+/// <para>
+/// 課程／合作廠商／課程群組／上稿作業這些內容維護作業<b>沒有</b>這道檢查 — 一般使用者本來就該
+/// 進得去, 那正是他們的日常工作。
+/// </para>
+/// </remarks>
 [ApiController]
+[Authorize(Roles = AppRoles.Admin)]
 [Route("api/publish-statuses")]
 [Produces("application/json")]
 public class PublishStatusesController : ControllerBase

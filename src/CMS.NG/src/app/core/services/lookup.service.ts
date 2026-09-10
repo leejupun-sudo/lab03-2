@@ -1,9 +1,12 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '@env';
+import { AppRoleLookup } from '@core/models/app-role.model';
 import { AppUserLookup } from '@core/models/app-user.model';
+import { CertificationLookup, CourseLookup, JobCategoryLookup } from '@core/models/course.model';
 import { CourseGroupLookup } from '@core/models/course-group.model';
+import { Promotion2Lookup, TrainingCenterLookup } from '@core/models/featured-promo-item.model';
 import { PartnerLookup } from '@core/models/partner.model';
 import { PublishStatusLookup } from '@core/models/publish-status.model';
 
@@ -14,6 +17,11 @@ export class LookupService {
 
   getAppUsers(): Observable<AppUserLookup[]> {
     return this.http.get<AppUserLookup[]>(`${this.baseUrl}/app-users`);
+  }
+
+  /** 角色下拉選項. 資料庫僅 2 筆; `value` 是 `roleId` (AppUserRole 儲存自然鍵). */
+  getAppRoles(): Observable<AppRoleLookup[]> {
+    return this.http.get<AppRoleLookup[]>(`${this.baseUrl}/app-roles`);
   }
 
   getPublishStatuses(): Observable<PublishStatusLookup[]> {
@@ -35,5 +43,41 @@ export class LookupService {
    */
   getPartners(): Observable<PartnerLookup[]> {
     return this.http.get<PartnerLookup[]>(`${this.baseUrl}/partners`);
+  }
+
+  /**
+   * 認證下拉選項. 資料庫約有 39 筆 — 消費端請設定 `[filter]="true"`.
+   * `label` 已含原廠名稱 (`FCP-PCS (Fortinet資安專家認證課程)`), 讓純代碼的認證名稱有脈絡.
+   */
+  getCertifications(): Observable<CertificationLookup[]> {
+    return this.http.get<CertificationLookup[]>(`${this.baseUrl}/certifications`);
+  }
+
+  /** 職務類別下拉選項. 資料庫約有 18 筆, 依 pkid 排序 — 消費端請設定 `[filter]="true"`. */
+  getJobCategories(): Observable<JobCategoryLookup[]> {
+    return this.http.get<JobCategoryLookup[]>(`${this.baseUrl}/job-categories`);
+  }
+
+  /**
+   * 課程下拉選項. 資料庫約有 1084 筆 — 消費端請設定
+   * `[filter]="true"` 與 `[virtualScroll]="true" [virtualScrollItemSize]="43"`.
+   */
+  getCourses(): Observable<CourseLookup[]> {
+    return this.http.get<CourseLookup[]>(`${this.baseUrl}/courses`);
+  }
+
+  /** 據點清單. 資料庫 5 筆, 依 DisplayOrder — 上稿作業的頁籤. */
+  getTrainingCenters(): Observable<TrainingCenterLookup[]> {
+    return this.http.get<TrainingCenterLookup[]>(`${this.baseUrl}/training-centers`);
+  }
+
+  /**
+   * 促銷活動查詢 — 給 `p-autocomplete` 用. `keyword` 比對促銷代碼, 空白時不送參數;
+   * 伺服器最多回 20 筆、新到舊. 資料庫 1157 筆, 不要拿這個當完整清單.
+   */
+  getPromotion2s(keyword?: string | null): Observable<Promotion2Lookup[]> {
+    const trimmed = keyword?.trim() ?? '';
+    const params = trimmed ? new HttpParams().set('keyword', trimmed) : new HttpParams();
+    return this.http.get<Promotion2Lookup[]>(`${this.baseUrl}/promotion2s`, { params });
   }
 }

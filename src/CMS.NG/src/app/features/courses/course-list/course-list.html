@@ -1,0 +1,607 @@
+<div class="cms-card cms-page-header">
+  <div class="cms-page-header__titles">
+    <h1 class="cms-page-header__title">課程 Course</h1>
+    <span class="cms-page-header__subtitle">訓練課程主資料</span>
+  </div>
+
+  <div class="cms-page-header__actions">
+    <p-button
+      label="搜尋條件"
+      icon="pi pi-filter"
+      severity="secondary"
+      [text]="true"
+      [badge]="hasActiveFilters ? '!' : undefined"
+      data-testid="open-filters"
+      (onClick)="drawerVisible.set(true)"
+    />
+    <p-button label="新增" icon="pi pi-plus" data-testid="add-course" (onClick)="goToNew()" />
+  </div>
+</div>
+
+<div class="cms-card">
+  <p class="cms-inline-edit-hint">
+    可直接於表格內編輯：<b>雙擊</b>儲存格開始編輯，離開欄位 (或按 Enter) 即自動儲存，按 Esc
+    取消。主代碼、簡介代碼、原廠、課程群組為唯讀欄位。
+  </p>
+
+  <!-- 14 data columns: the wrapper scrolls horizontally, the page body never does. -->
+  <div class="cms-table-scroll">
+    <p-table
+      [value]="courses()"
+      [loading]="loading()"
+      [paginator]="true"
+      [rows]="pageState.rows"
+      [first]="pageState.first"
+      [rowsPerPageOptions]="rowsPerPageOptions"
+      [sortField]="sortState.sortField"
+      [sortOrder]="sortState.sortOrder"
+      [showCurrentPageReport]="true"
+      currentPageReportTemplate="{first}–{last} 筆，共 {totalRecords} 筆"
+      paginatorPosition="top"
+      dataKey="pkid"
+      styleClass="p-datatable-sm"
+      [tableStyle]="{ 'min-width': '120rem' }"
+      data-testid="course-table"
+      (onSort)="onSort($event)"
+      (onPage)="onPage($event)"
+    >
+      <ng-template #header>
+        <tr>
+          <th pSortableColumn="pkid" style="width: 6rem">主代碼 <p-sortIcon field="pkid" /></th>
+          <th pSortableColumn="displayOrder" style="width: 6rem" class="cms-cell--number">
+            顯示順序 <p-sortIcon field="displayOrder" />
+          </th>
+          <th pSortableColumn="courseId" style="width: 9rem">簡介代碼 <p-sortIcon field="courseId" /></th>
+          <th pSortableColumn="prodCourseId" style="width: 9rem">科目代碼 <p-sortIcon field="prodCourseId" /></th>
+          <th pSortableColumn="title" style="min-width: 20rem">課程名稱 <p-sortIcon field="title" /></th>
+          <th pSortableColumn="partnerName" style="width: 11rem">原廠 <p-sortIcon field="partnerName" /></th>
+          <th pSortableColumn="courseGroupDescription" style="width: 13rem">
+            課程群組 <p-sortIcon field="courseGroupDescription" />
+          </th>
+          <th pSortableColumn="publishStatusDescription" style="width: 7rem">
+            上架狀態 <p-sortIcon field="publishStatusDescription" />
+          </th>
+          <th pSortableColumn="scheduleOn" style="width: 8rem">上架日期 <p-sortIcon field="scheduleOn" /></th>
+          <th pSortableColumn="scheduleOff" style="width: 8rem">下架日期 <p-sortIcon field="scheduleOff" /></th>
+          <th pSortableColumn="hour" style="width: 5rem" class="cms-cell--number">
+            時數 <p-sortIcon field="hour" />
+          </th>
+          <th pSortableColumn="listPrice" style="width: 7rem" class="cms-cell--number">
+            定價 <p-sortIcon field="listPrice" />
+          </th>
+          <th pSortableColumn="learningCredit" style="width: 5rem" class="cms-cell--number">
+            點數 <p-sortIcon field="learningCredit" />
+          </th>
+          <th pSortableColumn="canRepeat" style="width: 6rem" class="cms-cell--center">
+            允許重聽 <p-sortIcon field="canRepeat" />
+          </th>
+          <th style="width: 12rem" class="cms-cell--actions">操作</th>
+        </tr>
+      </ng-template>
+
+      <!--
+        Inline editing: every `cms-cell--editable` td opens its editor on dblclick only.
+        The four read-only columns (主代碼 / 簡介代碼 / 原廠 / 課程群組) carry no handler —
+        see EditableField in course-list.ts for why each one is excluded.
+      -->
+      <ng-template #body let-course>
+        <!-- One message at a time: only one cell is ever in edit mode. -->
+        <ng-template #cellError>
+          @if (editError(); as message) {
+            <small class="cms-inline-error" data-testid="edit-error">{{ message }}</small>
+          }
+        </ng-template>
+
+        <tr data-testid="course-row">
+          <td data-testid="editcell-pkid">{{ course.pkid }}</td>
+
+          <td
+            class="cms-cell--number cms-cell--editable"
+            data-testid="editcell-display-order"
+            (dblclick)="startEdit(course, 'displayOrder', $event.currentTarget)"
+          >
+            @if (isEditing(course, 'displayOrder')) {
+              <p-inputnumber
+                styleClass="cms-inline-editor"
+                [ngModel]="editing()?.value"
+                (ngModelChange)="setEditValue($event)"
+                [useGrouping]="false"
+                [maxFractionDigits]="0"
+                data-testid="editor-display-order"
+                (onBlur)="commit()"
+                (keydown.enter)="commit()"
+                (keydown.escape)="cancelEdit()"
+              />
+              <ng-container [ngTemplateOutlet]="cellError"></ng-container>
+            } @else {
+              {{ course.displayOrder }}
+            }
+          </td>
+
+          <td data-testid="editcell-course-id">
+            <span data-testid="cell-course-id">{{ course.courseId }}</span>
+          </td>
+
+          <td
+            class="cms-cell--editable"
+            data-testid="editcell-prod-course-id"
+            (dblclick)="startEdit(course, 'prodCourseId', $event.currentTarget)"
+          >
+            @if (isEditing(course, 'prodCourseId')) {
+              <input
+                pInputText
+                class="cms-inline-editor"
+                maxlength="50"
+                [ngModel]="editing()?.value"
+                (ngModelChange)="setEditValue($event)"
+                data-testid="editor-prod-course-id"
+                (blur)="commit()"
+                (keydown.enter)="commit()"
+                (keydown.escape)="cancelEdit()"
+              />
+              <ng-container [ngTemplateOutlet]="cellError"></ng-container>
+            } @else {
+              {{ course.prodCourseId }}
+            }
+          </td>
+
+          <td
+            class="cms-cell--editable"
+            data-testid="editcell-title"
+            (dblclick)="startEdit(course, 'title', $event.currentTarget)"
+          >
+            @if (isEditing(course, 'title')) {
+              <input
+                pInputText
+                class="cms-inline-editor"
+                maxlength="200"
+                [ngModel]="editing()?.value"
+                (ngModelChange)="setEditValue($event)"
+                data-testid="editor-title"
+                (blur)="commit()"
+                (keydown.enter)="commit()"
+                (keydown.escape)="cancelEdit()"
+              />
+              <ng-container [ngTemplateOutlet]="cellError"></ng-container>
+            } @else {
+              {{ course.title }}
+            }
+          </td>
+
+          <td data-testid="editcell-partner-name">
+            <a [routerLink]="['/partners', course.partnerPkid]" class="cms-link" data-testid="cell-partner">
+              {{ course.partnerName }}
+            </a>
+          </td>
+
+          <td data-testid="editcell-course-group">
+            @if (course.courseGroupPkid) {
+              <a
+                [routerLink]="['/course-groups', course.courseGroupPkid]"
+                class="cms-link"
+                data-testid="cell-course-group"
+              >
+                {{ course.courseGroupDescription }}
+              </a>
+            } @else {
+              <span class="cms-empty" data-testid="cell-course-group">—</span>
+            }
+          </td>
+
+          <td
+            class="cms-cell--editable"
+            data-testid="editcell-publish-status"
+            (dblclick)="startEdit(course, 'publishStatusPkid', $event.currentTarget)"
+          >
+            @if (isEditing(course, 'publishStatusPkid')) {
+              <p-select
+                styleClass="cms-inline-editor"
+                optionLabel="label"
+                optionValue="pkid"
+                appendTo="body"
+                [options]="publishStatuses()"
+                [ngModel]="editing()?.value"
+                (ngModelChange)="setEditValue($event)"
+                data-testid="editor-publish-status"
+                (onShow)="overlayOpen.set(true)"
+                (onHide)="overlayOpen.set(false)"
+                (onChange)="commit()"
+                (onBlur)="commitOnBlur()"
+                (keydown.escape)="cancelEdit()"
+              />
+              <ng-container [ngTemplateOutlet]="cellError"></ng-container>
+            } @else {
+              <a
+                [routerLink]="['/publish-statuses', course.publishStatusPkid]"
+                class="cms-link"
+                data-testid="cell-publish-status"
+              >
+                {{ course.publishStatusDescription }}
+              </a>
+            }
+          </td>
+
+          <td
+            class="cms-cell--editable"
+            data-testid="editcell-schedule-on"
+            (dblclick)="startEdit(course, 'scheduleOn', $event.currentTarget)"
+          >
+            @if (isEditing(course, 'scheduleOn')) {
+              <p-datepicker
+                styleClass="cms-inline-editor"
+                dateFormat="yy-mm-dd"
+                appendTo="body"
+                [ngModel]="editing()?.value"
+                (ngModelChange)="setEditValue($event)"
+                data-testid="editor-schedule-on"
+                (onShow)="overlayOpen.set(true)"
+                (onClose)="overlayOpen.set(false)"
+                (onSelect)="commit()"
+                (onBlur)="commitOnBlur()"
+                (keydown.escape)="cancelEdit()"
+              />
+              <ng-container [ngTemplateOutlet]="cellError"></ng-container>
+            } @else {
+              {{ course.scheduleOn }}
+            }
+          </td>
+
+          <td
+            class="cms-cell--editable"
+            data-testid="editcell-schedule-off"
+            (dblclick)="startEdit(course, 'scheduleOff', $event.currentTarget)"
+          >
+            @if (isEditing(course, 'scheduleOff')) {
+              <p-datepicker
+                styleClass="cms-inline-editor"
+                dateFormat="yy-mm-dd"
+                appendTo="body"
+                [ngModel]="editing()?.value"
+                (ngModelChange)="setEditValue($event)"
+                data-testid="editor-schedule-off"
+                (onShow)="overlayOpen.set(true)"
+                (onClose)="overlayOpen.set(false)"
+                (onSelect)="commit()"
+                (onBlur)="commitOnBlur()"
+                (keydown.escape)="cancelEdit()"
+              />
+              <ng-container [ngTemplateOutlet]="cellError"></ng-container>
+            } @else {
+              {{ course.scheduleOff }}
+            }
+          </td>
+
+          <td
+            class="cms-cell--number cms-cell--editable"
+            data-testid="editcell-hour"
+            (dblclick)="startEdit(course, 'hour', $event.currentTarget)"
+          >
+            @if (isEditing(course, 'hour')) {
+              <p-inputnumber
+                styleClass="cms-inline-editor"
+                [ngModel]="editing()?.value"
+                (ngModelChange)="setEditValue($event)"
+                [useGrouping]="false"
+                [maxFractionDigits]="0"
+                data-testid="editor-hour"
+                (onBlur)="commit()"
+                (keydown.enter)="commit()"
+                (keydown.escape)="cancelEdit()"
+              />
+              <ng-container [ngTemplateOutlet]="cellError"></ng-container>
+            } @else {
+              {{ course.hour }}
+            }
+          </td>
+
+          <td
+            class="cms-cell--number cms-cell--editable"
+            data-testid="editcell-list-price"
+            (dblclick)="startEdit(course, 'listPrice', $event.currentTarget)"
+          >
+            @if (isEditing(course, 'listPrice')) {
+              <p-inputnumber
+                styleClass="cms-inline-editor"
+                [ngModel]="editing()?.value"
+                (ngModelChange)="setEditValue($event)"
+                [useGrouping]="false"
+                [maxFractionDigits]="0"
+                data-testid="editor-list-price"
+                (onBlur)="commit()"
+                (keydown.enter)="commit()"
+                (keydown.escape)="cancelEdit()"
+              />
+              <ng-container [ngTemplateOutlet]="cellError"></ng-container>
+            } @else {
+              {{ course.listPrice | number: '1.0-0' }}
+            }
+          </td>
+
+          <td
+            class="cms-cell--number cms-cell--editable"
+            data-testid="editcell-learning-credit"
+            (dblclick)="startEdit(course, 'learningCredit', $event.currentTarget)"
+          >
+            @if (isEditing(course, 'learningCredit')) {
+              <p-inputnumber
+                styleClass="cms-inline-editor"
+                [ngModel]="editing()?.value"
+                (ngModelChange)="setEditValue($event)"
+                [useGrouping]="false"
+                [maxFractionDigits]="1"
+                data-testid="editor-learning-credit"
+                (onBlur)="commit()"
+                (keydown.enter)="commit()"
+                (keydown.escape)="cancelEdit()"
+              />
+              <ng-container [ngTemplateOutlet]="cellError"></ng-container>
+            } @else {
+              {{ course.learningCredit | number: '1.0-1' }}
+            }
+          </td>
+
+          <td
+            class="cms-cell--center cms-cell--editable"
+            data-testid="editcell-can-repeat"
+            (dblclick)="startEdit(course, 'canRepeat', $event.currentTarget)"
+          >
+            @if (isEditing(course, 'canRepeat')) {
+              <p-checkbox
+                [binary]="true"
+                [ngModel]="editing()?.value"
+                (ngModelChange)="setEditValue($event)"
+                data-testid="editor-can-repeat"
+                (onBlur)="commit()"
+                (keydown.escape)="cancelEdit()"
+              />
+              <ng-container [ngTemplateOutlet]="cellError"></ng-container>
+            } @else {
+              <span data-testid="cell-can-repeat">{{ course.canRepeat ? '是' : '否' }}</span>
+            }
+          </td>
+
+          <td class="cms-cell--actions">
+            <p-button
+              icon="pi pi-eye"
+              severity="secondary"
+              [text]="true"
+              [rounded]="true"
+              pTooltip="檢視"
+              [routerLink]="['/courses', course.pkid]"
+            />
+            <p-button
+              icon="pi pi-pencil"
+              severity="info"
+              [text]="true"
+              [rounded]="true"
+              pTooltip="編輯"
+              [routerLink]="['/courses', course.pkid, 'edit']"
+            />
+            <p-button
+              icon="pi pi-copy"
+              severity="help"
+              [text]="true"
+              [rounded]="true"
+              pTooltip="複製"
+              data-testid="copy-course"
+              (onClick)="openCopy(course)"
+            />
+            <p-button
+              icon="pi pi-trash"
+              severity="danger"
+              [text]="true"
+              [rounded]="true"
+              pTooltip="刪除"
+              data-testid="delete-course"
+              (onClick)="confirmDelete(course)"
+            />
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template #emptymessage>
+        <tr>
+          <td colspan="15" class="cms-empty">查無符合條件的課程。</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>
+
+<p-drawer
+  header="搜尋條件"
+  position="right"
+  [visible]="drawerVisible()"
+  (visibleChange)="drawerVisible.set($event)"
+  [style]="{ width: '26rem' }"
+>
+  <div class="cms-field">
+    <label class="cms-field__label" for="filter-keyword">關鍵字</label>
+    <input
+      pInputText
+      id="filter-keyword"
+      name="keyword"
+      placeholder="課程名稱 / 官方名稱 / 簡介代碼 / 科目代碼 / 友善網址"
+      data-testid="filter-keyword"
+      [(ngModel)]="filters.keyword"
+    />
+  </div>
+
+  <div class="cms-field">
+    <label class="cms-field__label" for="filter-partner">原廠</label>
+    <p-select
+      inputId="filter-partner"
+      name="partnerPkid"
+      optionLabel="label"
+      optionValue="pkid"
+      placeholder="全部"
+      appendTo="body"
+      [options]="partners()"
+      [filter]="true"
+      [showClear]="true"
+      data-testid="filter-partner"
+      [(ngModel)]="filters.partnerPkid"
+    />
+  </div>
+
+  <div class="cms-field">
+    <label class="cms-field__label" for="filter-course-group">課程群組</label>
+    <p-select
+      inputId="filter-course-group"
+      name="courseGroupPkid"
+      optionLabel="label"
+      optionValue="pkid"
+      placeholder="全部"
+      appendTo="body"
+      [options]="courseGroups()"
+      [filter]="true"
+      [showClear]="true"
+      [virtualScroll]="true"
+      [virtualScrollItemSize]="43"
+      data-testid="filter-course-group"
+      [(ngModel)]="filters.courseGroupPkid"
+    />
+  </div>
+
+  <div class="cms-field">
+    <label class="cms-field__label" for="filter-publish-status">上架狀態</label>
+    <p-select
+      inputId="filter-publish-status"
+      name="publishStatusPkid"
+      optionLabel="label"
+      optionValue="pkid"
+      placeholder="全部"
+      appendTo="body"
+      [options]="publishStatuses()"
+      [showClear]="true"
+      data-testid="filter-publish-status"
+      [(ngModel)]="filters.publishStatusPkid"
+    />
+  </div>
+
+  <div class="cms-field">
+    <span class="cms-field__label">上架日期</span>
+    <div class="cms-date-range">
+      <p-datepicker
+        inputId="filter-schedule-on-from"
+        name="scheduleOnFrom"
+        dateFormat="yy-mm-dd"
+        placeholder="起"
+        appendTo="body"
+        [showIcon]="true"
+        [showClear]="true"
+        [(ngModel)]="filters.scheduleOnFrom"
+      />
+      <p-datepicker
+        inputId="filter-schedule-on-to"
+        name="scheduleOnTo"
+        dateFormat="yy-mm-dd"
+        placeholder="迄"
+        appendTo="body"
+        [showIcon]="true"
+        [showClear]="true"
+        [(ngModel)]="filters.scheduleOnTo"
+      />
+    </div>
+  </div>
+
+  <div class="cms-field">
+    <span class="cms-field__label">下架日期</span>
+    <div class="cms-date-range">
+      <p-datepicker
+        inputId="filter-schedule-off-from"
+        name="scheduleOffFrom"
+        dateFormat="yy-mm-dd"
+        placeholder="起"
+        appendTo="body"
+        [showIcon]="true"
+        [showClear]="true"
+        [(ngModel)]="filters.scheduleOffFrom"
+      />
+      <p-datepicker
+        inputId="filter-schedule-off-to"
+        name="scheduleOffTo"
+        dateFormat="yy-mm-dd"
+        placeholder="迄"
+        appendTo="body"
+        [showIcon]="true"
+        [showClear]="true"
+        [(ngModel)]="filters.scheduleOffTo"
+      />
+    </div>
+  </div>
+
+  <div class="cms-field">
+    <label class="cms-field__label" for="filter-can-repeat">允許重聽</label>
+    <p-select
+      inputId="filter-can-repeat"
+      name="canRepeat"
+      optionLabel="label"
+      optionValue="value"
+      placeholder="全部"
+      appendTo="body"
+      [options]="canRepeatOptions"
+      [showClear]="true"
+      data-testid="filter-can-repeat"
+      [(ngModel)]="filters.canRepeat"
+    />
+  </div>
+
+  <div class="cms-drawer-actions">
+    <p-button
+      label="清除"
+      icon="pi pi-times"
+      severity="secondary"
+      [outlined]="true"
+      (onClick)="clearFilters()"
+    />
+    <p-button
+      label="搜尋"
+      icon="pi pi-search"
+      data-testid="apply-filters"
+      (onClick)="applyFilters()"
+    />
+  </div>
+</p-drawer>
+
+<p-dialog
+  header="複製課程"
+  [modal]="true"
+  [visible]="copyTarget() !== null"
+  (visibleChange)="$event ? null : closeCopy()"
+  [style]="{ width: '30rem' }"
+  data-testid="copy-dialog"
+>
+  @if (copyTarget(); as source) {
+    <p class="cms-copy-source" data-testid="copy-source">
+      來源：<b>{{ source.courseId }}</b> {{ source.title }}
+    </p>
+    <div class="cms-field">
+      <label class="cms-field__label" for="copy-course-id">
+        新簡介代碼 <span class="cms-field__required">*</span>
+      </label>
+      <input
+        pInputText
+        id="copy-course-id"
+        name="newCourseId"
+        maxlength="50"
+        placeholder="例：PLF-2"
+        data-testid="copy-course-id"
+        [(ngModel)]="newCourseId"
+        (keyup.enter)="copy()"
+      />
+      <small class="cms-field__hint">所有欄位、對應認證與職務類別都會一併複製；簡介代碼需唯一。</small>
+    </div>
+  }
+  <ng-template #footer>
+    <p-button label="取消" severity="secondary" [text]="true" (onClick)="closeCopy()" />
+    <p-button
+      label="複製"
+      icon="pi pi-copy"
+      [loading]="copying()"
+      [disabled]="newCourseId.trim() === ''"
+      data-testid="copy-confirm"
+      (onClick)="copy()"
+    />
+  </ng-template>
+</p-dialog>

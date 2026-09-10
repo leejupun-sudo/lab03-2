@@ -28,6 +28,15 @@ export interface AppRoleQuery {
   permissionLevelTo?: number | null;
 }
 
+/** 角色下拉選項 — mirrors CMS.API `AppRoleLookup`. Value is `roleId` (what AppUserRole stores). */
+export interface AppRoleLookup {
+  pkid: number;
+  roleId: string;
+  roleName: string;
+  /** 顯示標籤, 例: `Administrator (Admin)` */
+  label: string;
+}
+
 export const EMPTY_APP_ROLE_QUERY: AppRoleQuery = {
   keyword: null,
   permissionLevelFrom: null,

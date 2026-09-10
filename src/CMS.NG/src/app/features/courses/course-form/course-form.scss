@@ -1,0 +1,60 @@
+/* The toolbar stays visible while the long form scrolls. */
+.cms-page-header--sticky {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.cms-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 1rem;
+}
+
+.cms-form-grid--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.cms-form-grid--4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 900px) {
+  .cms-form-grid,
+  .cms-form-grid--3,
+  .cms-form-grid--4 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.cms-field__hint {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--cms-muted);
+}
+
+/* pkid is IDENTITY — shown read-only in edit mode, never an input. */
+.cms-field__readonly {
+  padding: 0.5rem 0;
+  font-weight: 600;
+  color: var(--cms-heading);
+}
+
+.cms-field textarea {
+  width: 100%;
+  font-family: inherit;
+}
+
+:host ::ng-deep .cms-field .p-datepicker,
+:host ::ng-deep .cms-field .p-inputnumber {
+  width: 100%;
+}
+
+/* Wrap the selected chips instead of overflowing the control. */
+:host ::ng-deep .p-multiselect-label {
+  white-space: normal;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
