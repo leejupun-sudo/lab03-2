@@ -18,14 +18,14 @@ could open the page; now you sign in, and what you can do depends on who you are
   exists.
 - **系統管理 is now restricted to administrators.** 使用者, 角色 and 發布狀態 — and the account and
   role pickers behind them — answer only to a signed-in administrator. Anyone else gets 權限不足 and
-  stays signed in. The content areas (課程, 合作夥伴, 課程群組, 首頁推薦) stay open to every
+  stays signed in. The content areas (課程, 合作廠商, 課程群組, 上稿作業) stay open to every
   signed-in user.
 - **我的帳號.** A signed-in user can change their own display name from the header user chip. The
   name updates in the header immediately; nothing else about the account can be changed from there.
 - **課程 Course management** — list, detail and form, with a QR code on the detail page and
   double-click inline editing on the list. An inline edit that fails leaves the cell open with your
   value still in it, so nothing is lost to a failed save.
-- **合作夥伴 Partner, 課程群組 CourseGroup, 發布狀態 PublishStatus, 使用者 AppUser and 首頁推薦
+- **合作廠商 Partner, 課程群組 CourseGroup, 發布狀態 PublishStatus, 使用者 AppUser and 上稿作業
   FeaturedPromoItem management** — list, detail and form for each.
 - **A record of what is left.** `TODOS.md` now carries the findings from this release's review that
   were deliberately deferred, each with a priority and a file reference.
