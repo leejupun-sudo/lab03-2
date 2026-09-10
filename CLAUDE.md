@@ -29,7 +29,12 @@ is the source of truth for how a table becomes code.
 | `src/CMS.NG`         | Angular 20 standalone + PrimeNG 20, port 4200                      |
 
 `README.md` is for humans running the app. Implemented features: AppRole, AppUser,
-PublishStatus, CourseGroup, Partner, Course, FeaturedPromoItem.
+PublishStatus, CourseGroup, Partner, Course, FeaturedPromoItem. Plus three non-CRUD ones:
+`POST /api/auth/login` (spec `spec/auth/Login.md`); JWT authorization end-to-end — every endpoint
+but login requires a bearer token, and Angular has a login page, an HTTP interceptor, a route
+guard and a role-gated sidebar (spec `spec/auth/Authorization.md`); and 我的帳號 My Profile —
+`PUT /api/auth/profile` plus the `/my-profile` page, where a signed-in user renames themselves
+(spec `spec/auth/MyProfile.md`).
 
 ## Environment gotchas (Windows)
 
@@ -82,6 +87,23 @@ to "verify" an endpoint without asking — the xUnit suite covers writes with in
   counts in every SELECT). An FK-target PK is immutable — never in `UPDATE`.
 - N-N junctions sync delete-then-reinsert inside the parent transaction — but confirm the
   table *is* a junction first (`docs/claude/schema-traps.md`).
+- **Every controller needs a token.** `app.MapControllers().RequireAuthorization()` covers the
+  whole surface; `AuthController.Login` holds the only `[AllowAnonymous]` — **on the action, not
+  the class**, or it would re-open `PUT /api/auth/profile` beside it. An endpoint that acts on
+  "the current user" takes the account from `User.FindFirstValue("userId")`, never from the body,
+  and its request DTO simply has no property for one. The bearer signing key is
+  re-read from `SysConfig.appConfig.symmetricSecurityKey` **per request**, never from
+  appsettings. Details and traps: `docs/claude/features.md`.
+- **系統管理 needs the Admin role on top of that token.** `[Authorize(Roles = AppRoles.Admin)]`
+  on `AppUsersController`, `AppRolesController`, `PublishStatusesController`, and on the
+  `app-users` / `app-roles` **actions** of `LookupsController` (the rest of that class stays open —
+  the course forms need it). Content features are deliberately ungated. **Anything that assigns a
+  role must be gated in the same change as what the role protects**: `AppRoleRequest.UserIds`
+  rewrites `AppUserRole`, so an ungated `PUT /api/app-roles` is a one-request self-grant of Admin.
+- **The account is re-read on every authenticated request** (`Security/ActiveAccountEvents.cs`),
+  so deactivating or deleting a user takes effect immediately instead of whenever their 24-hour
+  token expires. Missing or `IsActive = 0` → `401` (the credential is finished), never `403`.
+  Costs one clustered-PK seek per request; do not remove it to save that.
 - **Probe the live DB before writing a repository.** The DDL omits unique indexes,
   unconstrained references, cascades and non-IDENTITY keys; every feature so far hit one.
   Checklist and cases: `docs/claude/schema-traps.md`.
@@ -105,6 +127,17 @@ to "verify" an endpoint without asking — the xUnit suite covers writes with in
   open, and the row is never mutated until the write resolves — so closing the editor *is*
   the revert. An inline save that PUTs a parent with junctions must re-read the full row
   first (`docs/claude/features.md`).
+- Auth: the profile lives in **session storage** (`cms-auth`), never local storage; one
+  interceptor attaches `Authorization: Bearer`, handles 401 (clearing all of session storage and
+  returning to `/login`) and 403 (a 權限不足 toast — the session stays, since signing in again
+  fixes nothing); one `authGuard` sits on the pathless parent wrapping every route, so new routes
+  are covered automatically, and an `adminGuard` sits on a second pathless parent around the
+  系統管理 branch. Both guards and the hidden sidebar group are **ergonomics, not the boundary** —
+  browser-side roles come from an unverified JWT decode; the API's `[Authorize(Roles)]` is what
+  enforces it. Default landing is `/featured-promo-items` (in `app.routes.ts` **and**
+  `login.ts` `DEFAULT_LANDING` — keep them equal), because 角色 is Admin-only now. The header user
+  chip links to `/my-profile`, a header link and deliberately *not* a sidebar entry. See
+  `docs/claude/features.md`.
 - **A CommonJS runtime dependency** (the first is `qrcode`) must be listed in
   `angular.json` under `allowedCommonJsDependencies`, or every build warns.
 - Dates: `date` columns travel as `yyyy-MM-dd`; convert with `core/utils/date.util.ts`
@@ -114,3 +147,40 @@ to "verify" an endpoint without asking — the xUnit suite covers writes with in
 - Delete confirmations: ``確定要刪除主代碼 <b>${item.pkid}</b>「${item.<nameField>}」？``
 - Mockups (`spec/*.png`, `custom/`) are style references; **the schema wins on content**
   (nullability, uniqueness), and deviations from the house page shape are recorded in the spec.
+
+## gstack
+
+Skill pack from [garrytan/gstack](https://github.com/garrytan/gstack) (MIT), installed at
+`~/.claude/skills/gstack`.
+
+- **All web browsing goes through the `/browse` skill from gstack.** Do not use the
+  `mcp__claude-in-chrome__*` tools directly.
+
+Available skills:
+
+`/office-hours`, `/plan-ceo-review`, `/plan-eng-review`, `/plan-design-review`,
+`/design-consultation`, `/design-shotgun`, `/design-html`, `/review`, `/ship`,
+`/land-and-deploy`, `/canary`, `/benchmark`, `/browse`, `/connect-chrome`, `/qa`, `/qa-only`,
+`/design-review`, `/setup-browser-cookies`, `/setup-deploy`, `/setup-gbrain`, `/retro`,
+`/investigate`, `/document-release`, `/document-generate`, `/codex`, `/cso`, `/autoplan`,
+`/plan-devex-review`, `/devex-review`, `/careful`, `/freeze`, `/guard`, `/unfreeze`,
+`/gstack-upgrade`, `/learn`.
+
+## Skill routing
+
+When the user's request matches an available skill, invoke it via the Skill tool. When in doubt, invoke the skill.
+
+Key routing rules:
+- Product ideas/brainstorming → invoke /office-hours
+- Strategy/scope → invoke /plan-ceo-review
+- Architecture → invoke /plan-eng-review
+- Design system/plan review → invoke /design-consultation or /plan-design-review
+- Full review pipeline → invoke /autoplan
+- Bugs/errors → invoke /investigate
+- QA/testing site behavior → invoke /qa or /qa-only
+- Code review/diff check → invoke /review
+- Visual polish → invoke /design-review
+- Ship/deploy/PR → invoke /ship or /land-and-deploy
+- Save progress → invoke /context-save
+- Resume context → invoke /context-restore
+- Author a backlog-ready spec/issue → invoke /spec

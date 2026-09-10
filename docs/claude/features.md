@@ -213,3 +213,118 @@ instead of the `/crud` template, so it breaks several house patterns on purpose:
 - Copy/Paste is client-side only: an in-memory clipboard of the content (never the key), and
   Paste opens the inline form pre-filled; the write is an ordinary `POST`.
 - `GET /api/featured-promo-items` (all ~31 k rows) exists for parity; the UI never calls it.
+
+## 登入 Login (Auth)
+
+`POST /api/auth/login`. Spec: `spec/auth/Login.md`. The first endpoint that is not table
+CRUD — no Angular page, no list/detail/form, no nav entry.
+
+- **Every rejection is the same `401`.** Unknown `UserId`, wrong password and `IsActive = 0`
+  return a byte-identical `ProblemDetails` (登入失敗 / 帳號或密碼錯誤。); a test compares the
+  three bodies. Splitting them would make the endpoint an account-existence oracle. The real
+  reason goes to `ILogger`, never to the client.
+- **`AppUserCredential` is the only model with `PasswordHash`** and no controller returns it.
+  `AppUser` still has no such property; `LoginResponse` has exactly three.
+  `AuthRepository.GetCredentialAsync` is the only query that SELECTs the column into a DTO.
+- **The signing key is read from `SysConfig` per token**, never from appsettings and never
+  hard-coded, so editing the row rotates it with no redeploy. `AppConfig` gained
+  `SymmetricSecurityKey`; the type is never returned by a controller and never logged — the
+  same rule `DefaultPassword` always relied on.
+- **A bad key is a 500, not a 401.** Missing row, blank key, or under 32 bytes throws.
+  HMAC-SHA256 needs 256 bits and the live key is *exactly* 32 bytes — no margin.
+- **Claims use short names** (`sub`, `userId`, `userName`, `role`, `jti`). `JwtSecurityTokenHandler`
+  only remaps the long `ClaimTypes.*` URIs, so these survive round-tripping; a reader needs
+  `MapInboundClaims = false` or `ReadJwtToken` to see them unchanged. One `role` claim per
+  `AppUserRole` row; no roles means no claims.
+- **`TimeProvider` is injected** (registered in `Program.cs`, pinned by `FixedTimeProvider` in
+  tests) so the 24-hour expiry is asserted exactly, not within a tolerance.
+- **`UserId` matching follows the column collation** (`..._CI_AS`, case-insensitive). That is
+  not a loosening: `UserIdExistsAsync` already enforces uniqueness case-insensitively, so two
+  accounts differing only in case cannot exist.
+- **This section covers *issuing* only.** Enforcement — `AddJwtBearer`,
+  `MapControllers().RequireAuthorization()`, the per-request account re-read and the Admin role
+  gate — is the 登入與授權 section below. The token still deliberately carries no `iss`/`aud`;
+  validation switches both checks off to match.
+
+## 登入與授權 Login / Authorization
+
+No sidebar entry and no table. Login page at `/login` (the one public route); everything else is
+behind a token. Specs: `spec/auth/Login.md` (issuing), `spec/auth/Authorization.md` (enforcing).
+
+- **`app.MapControllers().RequireAuthorization()` in `Program.cs` protects the whole controller
+  surface**, so a new controller is protected the moment it is added. `AuthController` carries
+  the only `[AllowAnonymous]`. Do not "tidy" this into per-class `[Authorize]` — the failure mode
+  of forgetting one is a silently public endpoint.
+- The bearer signing key is **not** in configuration. `Security/SysConfigSigningKeys.cs`
+  (an `IConfigurationManager<OpenIdConnectConfiguration>`) re-reads
+  `SysConfig.appConfig.symmetricSecurityKey` per request through the shared
+  `Security/JwtSigningKey.cs`, the same reader `JwtTokenService` signs with. Rotating the row
+  invalidates outstanding tokens immediately. `IssuerSigningKeyResolver` is the tempting
+  alternative and is **synchronous** — it would block a thread on Dapper.
+- `ValidateIssuer` and `ValidateAudience` are **off**: the tokens carry no `iss`/`aud`, so turning
+  them on rejects every token the API itself issues. `MapInboundClaims = false` keeps the short
+  claim names (`role`, `userId`, `userName`) readable.
+- **A missing `appConfig` row now 500s every endpoint**, not just user-create and reset-password —
+  authentication needs the key from that same row. Tests that simulate the fault must blank
+  `defaultPassword` and keep `symmetricSecurityKey`.
+- **Every xUnit factory derives from `ApiFactory`**, which fakes `ISysConfigRepository` and hands
+  `CreateClient()` a real token; `CreateAnonymousClient()` is the 401 case. `docs/claude/testing.md`.
+- Angular: profile in **session storage** (`cms-auth`), never local storage. Logout and any 401
+  call `sessionStorage.clear()` — the list pages' `{entity}-list-*` keys belong to the previous
+  user and must not survive.
+- One interceptor does both halves (attach header, handle 401). **The login endpoint's own 401 is
+  exempt** — there it means 帳號或密碼錯誤 and belongs to the form.
+- One `authGuard` sits as `canActivateChild` on a pathless parent wrapping every route, so new
+  routes are covered by construction. `returnUrl` is only honoured if it starts with a single `/`.
+- `app.html` keeps **one** `<router-outlet>` always; only the sidebar and header are conditional.
+  Wrapping the outlet in `@if`/`@else` destroys and re-creates it on every sign-in for no gain.
+- **The 系統管理 Admin gate is enforced server-side; the browser-side parts are ergonomics.**
+  Three layers: the hidden sidebar group (`navGroups`), `adminGuard` on a second pathless parent
+  around the 系統管理 branch, and `[Authorize(Roles = AppRoles.Admin)]` on `AppUsersController`,
+  `AppRolesController`, `PublishStatusesController` plus the `app-users` / `app-roles` actions of
+  `LookupsController`. Only the last is the boundary — the first two read roles from an unverified
+  browser-side JWT decode and exist so a non-Admin never loads a page that would only 403.
+  (This section used to say "menu-only and deliberately cosmetic"; a `/cso` audit reversed it —
+  see the superseded note in `spec/auth/Authorization.md`.)
+- **Gate the role-assigning endpoint at the same moment as what the role protects.**
+  `AppRoleRequest.UserIds` rewrites `AppUserRole` wholesale, so gating `AppUsersController` while
+  leaving `AppRolesController` open would leave a one-request self-grant of Admin that walks
+  through every other gate. The same obligation applies to any future role check.
+- **`LookupsController` is gated per action, not per class.** Its 使用者 and 角色 lists feed the
+  Admin-only forms; the other six feed course maintenance forms every signed-in user needs.
+- **The default landing route is `/featured-promo-items`**, in `app.routes.ts` (both `''` and
+  `**`) and in `login.ts` `DEFAULT_LANDING`. It used to be `/app-roles`, which is now Admin-only —
+  a non-Admin would have landed on a redirect loop out of their own front door. Keep the two equal.
+- **A 403 must not clear the session.** The interceptor toasts 權限不足 and leaves the user where
+  they are; only 401 means the credential is finished. Signing in again cannot fix a 403.
+- Adding a nav entry still breaks `app.spec.ts`; note it now seeds an Admin session first, since
+  the shell does not render without one — and `adminGuard` needs that same Admin claim for any
+  spec that navigates into 系統管理.
+
+## 我的帳號 My Profile (Auth)
+
+`PUT /api/auth/profile` + the `/my-profile` page. No sidebar entry — reached from the header user
+chip. Spec: `spec/auth/MyProfile.md`.
+
+- **`[AllowAnonymous]` is on `AuthController.Login`, not on the class — and must stay there.**
+  A class-level `[AllowAnonymous]` wins over `[Authorize]` on an action inside it (the
+  authorization middleware skips the endpoint as soon as it sees `IAllowAnonymous` metadata), so
+  moving it back up would silently make the profile write public with no attribute able to close
+  it. Two tests pin both halves: profile `401`s anonymously, login still works without a token.
+- **The account written comes from the token's `userId` claim, never from the body.**
+  `UpdateProfileRequest` has exactly one property (`userName`), so `userId` / `roleIds` /
+  `isActive` in a request body do not bind at all, and `UpdateUserNameAsync` writes one column of
+  one row. A test PUTs all of them and asserts only the name moved.
+- **A rename does not re-issue the token.** Its `userName` claim goes stale; nothing reads it (the
+  shell renders session storage, the API authorizes on `userId`/`role`), and re-issuing would
+  restart the 24-hour expiry as a side effect of an edit. `AuthService.updateProfile()` therefore
+  rewrites only `userName` in session storage, keeping `userId` and `accessToken` — which is also
+  what refreshes the header, since `userName` is computed off that storage.
+- **`[Required]` alone rejects whitespace** — `RequiredAttribute` trims before its emptiness
+  check. Angular's `Validators.required` does not, so the form also carries `pattern(/\S/)`.
+- 帳號 and 角色 are read from the session and the token's claims, **not from a GET** — the same
+  no-extra-call read the role-gated sidebar does, so the page and the menu cannot disagree. Both
+  are therefore as of sign-in.
+- A valid token for a deleted account is `404` 查無使用者, not `401`: the credential is genuine.
+- `app.spec.ts` asserts `/my-profile` is **absent** from the sidebar href list — it is a header
+  link, not a nav entry.
