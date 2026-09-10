@@ -1,0 +1,54 @@
+.cms-login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 1.5rem;
+  /* The sidebar's dark ground, so the login page reads as the same product. */
+  background: linear-gradient(160deg, var(--cms-sidebar-bg) 0%, #1f2937 100%);
+}
+
+.cms-login__card {
+  width: 100%;
+  max-width: 24rem;
+  margin: 0;
+  padding: 2rem 1.75rem;
+  box-shadow: 0 1.25rem 2.5rem rgba(15, 23, 42, 0.35);
+}
+
+.cms-login__brand {
+  margin-bottom: 1.75rem;
+  text-align: center;
+}
+
+.cms-login__brand-mark {
+  display: inline-block;
+  margin-bottom: 0.75rem;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--p-primary-color, #059669);
+}
+
+.cms-login__title {
+  margin: 0 0 0.35rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--cms-heading);
+}
+
+.cms-login__subtitle {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--cms-muted);
+}
+
+.cms-login__error {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #fecaca;
+  border-radius: 0.5rem;
+  background: #fef2f2;
+  font-size: 0.85rem;
+  color: #b91c1c;
+}

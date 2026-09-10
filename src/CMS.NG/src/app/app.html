@@ -1,52 +1,85 @@
-<div class="cms-shell" [class.cms-shell--collapsed]="sidebarCollapsed()">
-  <aside class="cms-sidebar">
-    <div class="cms-sidebar__brand">
-      <span class="cms-sidebar__brand-text">{{ title() }}</span>
-      <button
-        type="button"
-        class="cms-sidebar__toggle"
-        [attr.aria-label]="sidebarCollapsed() ? '展開選單' : '收合選單'"
-        (click)="toggleSidebar()"
-      >
-        <i class="pi" [class.pi-angle-left]="!sidebarCollapsed()" [class.pi-angle-right]="sidebarCollapsed()"></i>
-      </button>
-    </div>
+<!--
+  One router-outlet, always. The sidebar and header are what appear and disappear with the
+  session — swapping the outlet itself between two branches would destroy and re-create it on
+  every sign-in and sign-out, for no gain.
+-->
+<div
+  class="cms-shell"
+  [class.cms-shell--collapsed]="sidebarCollapsed()"
+  [class.cms-shell--bare]="!signedIn()"
+>
+  @if (signedIn()) {
+    <aside class="cms-sidebar">
+      <div class="cms-sidebar__brand">
+        <span class="cms-sidebar__brand-text">{{ title() }}</span>
+        <button
+          type="button"
+          class="cms-sidebar__toggle"
+          [attr.aria-label]="sidebarCollapsed() ? '展開選單' : '收合選單'"
+          (click)="toggleSidebar()"
+        >
+          <i class="pi" [class.pi-angle-left]="!sidebarCollapsed()" [class.pi-angle-right]="sidebarCollapsed()"></i>
+        </button>
+      </div>
 
-    <nav class="cms-sidebar__nav">
-      @for (group of navGroups(); track group.label) {
-        <div class="cms-nav-group">
-          <button type="button" class="cms-nav-group__header" (click)="toggleGroup(group)">
-            <i class="cms-nav-group__icon" [class]="group.icon"></i>
-            <span class="cms-nav-group__label">{{ group.label }}</span>
-            <i
-              class="cms-nav-group__chevron pi"
-              [class.pi-angle-down]="group.expanded"
-              [class.pi-angle-right]="!group.expanded"
-            ></i>
-          </button>
+      <nav class="cms-sidebar__nav">
+        @for (group of navGroups(); track group.label) {
+          <div class="cms-nav-group">
+            <button type="button" class="cms-nav-group__header" (click)="toggleGroup(group)">
+              <i class="cms-nav-group__icon" [class]="group.icon"></i>
+              <span class="cms-nav-group__label">{{ group.label }}</span>
+              <i
+                class="cms-nav-group__chevron pi"
+                [class.pi-angle-down]="group.expanded"
+                [class.pi-angle-right]="!group.expanded"
+              ></i>
+            </button>
 
-          @if (group.expanded) {
-            <ul class="cms-nav-group__items">
-              @for (item of group.items; track item.route) {
-                <li>
-                  <a
-                    class="cms-nav-item"
-                    [routerLink]="item.route"
-                    routerLinkActive="cms-nav-item--active"
-                  >
-                    <i class="cms-nav-item__icon" [class]="item.icon"></i>
-                    <span class="cms-nav-item__label">{{ item.label }}</span>
-                  </a>
-                </li>
-              }
-            </ul>
-          }
-        </div>
-      }
-    </nav>
-  </aside>
+            @if (group.expanded) {
+              <ul class="cms-nav-group__items">
+                @for (item of group.items; track item.route) {
+                  <li>
+                    <a
+                      class="cms-nav-item"
+                      [routerLink]="item.route"
+                      routerLinkActive="cms-nav-item--active"
+                    >
+                      <i class="cms-nav-item__icon" [class]="item.icon"></i>
+                      <span class="cms-nav-item__label">{{ item.label }}</span>
+                    </a>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        }
+      </nav>
+    </aside>
+  }
 
   <main class="cms-content">
+    @if (signedIn()) {
+      <header class="cms-topbar">
+        <!-- The user chip is the way in to 我的帳號; the name it shows is the one that page edits. -->
+        <a
+          class="cms-topbar__user"
+          routerLink="/my-profile"
+          routerLinkActive="cms-topbar__user--active"
+          aria-label="我的帳號 My Profile"
+          title="我的帳號 My Profile"
+          data-testid="signed-in-user"
+        >
+          <i class="pi pi-user"></i>
+          <span class="cms-topbar__user-name">{{ userName() }}</span>
+          <span class="cms-topbar__user-action">我的帳號</span>
+        </a>
+        <button type="button" class="cms-topbar__logout" (click)="logout()" data-testid="logout">
+          <i class="pi pi-sign-out"></i>
+          <span>登出</span>
+        </button>
+      </header>
+    }
+
     <router-outlet />
   </main>
 </div>

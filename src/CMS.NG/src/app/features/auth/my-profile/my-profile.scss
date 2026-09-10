@@ -1,0 +1,21 @@
+.cms-field__hint {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--cms-muted);
+}
+
+/* 帳號 comes from the token and cannot be changed here — shown, never an input. */
+.cms-field__readonly {
+  padding: 0.5rem 0;
+  margin: 0;
+  font-weight: 600;
+  color: var(--cms-heading);
+}
+
+.cms-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+}

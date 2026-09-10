@@ -129,3 +129,68 @@
   min-width: 0;
   padding: 1.25rem;
 }
+
+/* The login page draws its own full-height ground — no sidebar, no page padding. */
+.cms-shell--bare .cms-content {
+  padding: 0;
+}
+
+/* ---------- Top bar (signed-in user + 登出) ---------- */
+
+.cms-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--cms-card-border);
+  border-radius: var(--cms-card-radius);
+  background: var(--cms-card-bg);
+}
+
+.cms-topbar__user {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--cms-heading);
+  text-decoration: none;
+
+  &:hover,
+  &--active {
+    border-color: var(--cms-card-border);
+    background: var(--cms-page-bg);
+  }
+}
+
+.cms-topbar__user-action {
+  font-size: 0.8rem;
+  color: var(--cms-muted);
+}
+
+.cms-topbar__user-name {
+  font-weight: 600;
+}
+
+.cms-topbar__logout {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--cms-card-border);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--cms-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--cms-page-bg);
+    color: var(--cms-heading);
+  }
+}
